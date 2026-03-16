@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Admin Dashboard</h2>
+
+<a href="/add_job" class="btn btn-success mb-3">Add Job</a>
+
+<table class="table">
+
+<tr>
+<th>Title</th>
+<th>Company</th>
+<th>Actions</th>
+</tr>
+
+{% for job in jobs %}
+
+<tr>
+
+<td>{{job.title}}</td>
+
+<td>{{job.company}}</td>
+
+<td>
+
+<a href="/edit/{{job.id}}" class="btn btn-warning btn-sm">Edit</a>
+
+<a href="/delete/{{job.id}}" class="btn btn-danger btn-sm">Delete</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endblock %}

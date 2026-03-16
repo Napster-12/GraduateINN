@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow-lg border-0">
+    <div class="card-header bg-primary text-white">
+      <h4 class="mb-0">Post New Opportunity</h4>
+    </div>
+    <div class="card-body">
+      <form method="post">
+
+        <!-- JOB INFORMATION -->
+        <h5 class="mb-3">Job Information</h5>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Job Title</label>
+            <input name="title" class="form-control" placeholder="Graduate Electrical Engineer">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Company</label>
+            <input name="company" class="form-control" placeholder="e.g Eskom">
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Location</label>
+            <input name="location" class="form-control" placeholder="e.g Johannesburg">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Field</label>
+            <input name="field" class="form-control" placeholder="e.g Electrical Engineering">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Qualification Required</label>
+          <input name="qualification" class="form-control" placeholder="Diploma / Degree">
+        </div>
+
+        <hr>
+
+        <!-- DESCRIPTION -->
+        <h5 class="mb-3">Job Description</h5>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" rows="4" class="form-control"
+            placeholder="Describe the opportunity, responsibilities, programme details..."></textarea>
+        </div>
+
+        <hr>
+
+        <!-- REQUIREMENTS -->
+        <h5 class="mb-3">Requirements</h5>
+        <div class="mb-3">
+          <label class="form-label">Minimum Requirements</label>
+          <textarea name="requirements" rows="4" class="form-control"
+            placeholder="Example:
+• National Diploma in Electrical Engineering
+• South African citizen
+• Basic programming knowledge"></textarea>
+        </div>
+
+        <hr>
+
+        <!-- APPLICATION METHOD -->
+        <h5 class="mb-3">Application Method</h5>
+        <div class="mb-3">
+          <label class="form-label">Select Application Type</label>
+          <select name="application_type" class="form-select">
+            <option value="link" selected>Apply via Website Link</option>
+            <option value="email">Apply via Email</option>
+          </select>
+        </div>
+
+        <!-- WEBSITE LINK -->
+        <div class="mb-3" id="link-section">
+          <label class="form-label">Application Link</label>
+          <input name="application_link" class="form-control" placeholder="https://company-website/apply">
+        </div>
+
+        <!-- EMAILS -->
+        <div class="mb-3 d-none" id="email-section">
+          <label class="form-label">Emails for Application (separate multiple emails with commas)</label>
+          <input name="application_emails" class="form-control" placeholder="student1@example.com, student2@example.com">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Closing Date</label>
+          <input type="date" name="closing_date" class="form-control">
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="/dashboard" class="btn btn-outline-secondary">Cancel</a>
+          <button class="btn btn-success px-4">Post Opportunity</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Toggle link/email input based on selection
+  const selectType = document.querySelector('select[name="application_type"]');
+  const linkSection = document.getElementById('link-section');
+  const emailSection = document.getElementById('email-section');
+
+  selectType.addEventListener('change', () => {
+    if(selectType.value === 'link') {
+      linkSection.classList.remove('d-none');
+      emailSection.classList.add('d-none');
+    } else {
+      linkSection.classList.add('d-none');
+      emailSection.classList.remove('d-none');
+    }
+  });
+</script>
+{% endblock %}

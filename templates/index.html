@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graduate Inn - Opportunities</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0a2540;
+            --primary-light: #1a344d;
+            --accent: #0066cc;
+            --accent-hover: #0052a3;
+            --text-dark: #1e293b;
+            --text-medium: #475569;
+            --text-light: #64748b;
+            --border-light: #e9edf2;
+            --background: #f9fafc;
+            --white: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --hover-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            background-color: var(--background);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            color: var(--text-dark);
+            line-height: 1.5;
+        }
+
+        /* Layout */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            background: var(--white);
+            border-radius: 16px;
+            border: 1px solid var(--border-light);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.01em;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: var(--border-light);
+            margin: 1.25rem 0;
+        }
+
+        .field-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .field-list li {
+            margin-bottom: 0.75rem;
+        }
+
+        .field-list a {
+            color: var(--text-medium);
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: inline-block;
+            padding: 0.2rem 0;
+            transition: color 0.2s ease;
+        }
+
+        .field-list a:hover {
+            color: var(--accent);
+        }
+
+        .company-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .company-list li {
+            color: var(--text-medium);
+            font-size: 0.95rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .company-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* Main Content */
+        .section-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 1.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        /* Job Cards */
+        .job-card {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            margin-bottom: 1.5rem;
+            transition: all 0.25s ease;
+        }
+
+        .job-card:hover {
+            box-shadow: var(--hover-shadow);
+            border-color: #d0d9e8;
+        }
+
+        .card-content {
+            padding: 1.75rem;
+        }
+
+        /* Company Avatar */
+        .company-avatar {
+            width: 48px;
+            height: 48px;
+            background: #f0f4fa;
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 1px solid var(--border-light);
+        }
+
+        /* Job Header */
+        .job-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .job-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.01em;
+        }
+
+        .job-meta {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .meta-separator {
+            width: 3px;
+            height: 3px;
+            background: var(--text-light);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        /* Tags */
+        .job-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .tag {
+            background: #f0f4fa;
+            color: var(--text-medium);
+            font-size: 0.85rem;
+            padding: 0.35rem 1rem;
+            border-radius: 30px;
+            border: 1px solid var(--border-light);
+            font-weight: 450;
+        }
+
+        /* Content Sections */
+        .content-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .content-section h6 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .description-text p {
+            color: var(--text-medium);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+        }
+
+        .requirements-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .requirements-list li {
+            color: var(--text-medium);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 0.4rem;
+            padding-left: 1.25rem;
+            position: relative;
+        }
+
+        .requirements-list li::before {
+            content: "•";
+            color: var(--primary);
+            font-size: 1.2rem;
+            position: absolute;
+            left: 0;
+            top: -2px;
+        }
+
+        /* Footer */
+        .job-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .closing-date {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .apply-btn {
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.6rem 1.75rem;
+            border-radius: 40px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s ease;
+            border: 1px solid var(--primary);
+        }
+
+        .apply-btn:hover {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        /* Empty State */
+        .empty-state {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+            
+            .card-content {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="row g-4">
+
+            <!-- LEFT SIDEBAR -->
+            <div class="col-lg-3 d-none d-lg-block">
+                <div class="sidebar">
+                    <h2 class="sidebar-title">Graduate Inn</h2>
+                    <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 1.5rem;">
+                        Discover internships, WIL placements, and graduate programs in one place.
+                    </p>
+                    
+                    <div class="sidebar-divider"></div>
+                    
+                    <h3 class="sidebar-title" style="font-size: 1rem;">Browse by Field</h3>
+                    <ul class="field-list">
+                        <li><a href="/search?q=Engineering">Engineering</a></li>
+                        <li><a href="/search?q=IT">Information Technology</a></li>
+                        <li><a href="/search?q=Accounting">Accounting</a></li>
+                        <li><a href="/search?q=Marketing">Marketing</a></li>
+                        <li><a href="/search?q=Finance">Finance</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- CENTER FEED -->
+            <div class="col-lg-6">
+                <h1 class="section-header">Latest Opportunities</h1>
+
+                {% if jobs %}
+                    {% for job in jobs %}
+                    <div class="job-card">
+                        <div class="card-content">
+                            <!-- HEADER -->
+                            <div class="job-header">
+                                <div class="company-avatar">{{ job.company[0] }}</div>
+                                <div>
+                                    <h2 class="job-title">{{ job.title }}</h2>
+                                    <div class="job-meta">
+                                        <span>{{ job.company }}</span>
+                                        <span class="meta-separator"></span>
+                                        <span>{{ job.location }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAGS -->
+                            <div class="job-tags">
+                                <span class="tag">{{ job.field }}</span>
+                                <span class="tag">{{ job.qualification }}</span>
+                            </div>
+
+                            <!-- DESCRIPTION -->
+                            <div class="content-section">
+                                <h6>Description</h6>
+                                <div class="description-text">
+                                    {% for line in job.description.split('-') %}
+                                        {% if line.strip() %}
+                                            <p>{{ line.strip() }}</p>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- REQUIREMENTS -->
+                            <div class="content-section">
+                                <h6>Requirements</h6>
+                                <ul class="requirements-list">
+                                    {% for req in job.requirements.split('\n') %}
+                                        {% if req.strip() %}
+                                            <li>{{ req.strip() }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+
+                            <!-- FOOTER -->
+                            <div class="job-footer">
+                                <span class="closing-date">Closing: {{ job.closing_date }}</span>
+                                <a href="{{ job.application_link }}" target="_blank" class="apply-btn">Apply Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p style="margin-bottom: 0.5rem; font-weight: 500;">No opportunities available</p>
+                        <p style="font-size: 0.9rem;">Check back later for new listings</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- RIGHT SIDEBAR -->
+            <div class="col-lg-3 d-none d-lg-block">
+                <div class="sidebar">
+                    <h3 class="sidebar-title">Top Companies</h3>
+                    <ul class="company-list">
+                        <li>Eskom</li>
+                        <li>Sasol</li>
+                        <li>Transnet</li>
+                        <li>Anglo American</li>
+                        <li>Vodacom</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

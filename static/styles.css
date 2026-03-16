@@ -1,0 +1,155 @@
+body {
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    background: #f3f4f6;
+    color: #111;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+a:hover {
+    color: #0d6efd;
+}
+
+/* JOB CARD */
+.job-card {
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    background: #fff;
+    padding: 0;
+    overflow: hidden;
+}
+.job-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+}
+
+/* COMPANY AVATAR */
+.company-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+/* JOB TITLE */
+.job-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111;
+    margin-bottom: 4px;
+}
+
+/* SECTION TITLES */
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #222;
+}
+
+/* DESCRIPTION */
+.description-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #444;
+}
+
+/* REQUIREMENTS */
+.requirements-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #444;
+}
+
+/* CLOSING DATE */
+.closing-date {
+    font-size: 13px;
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* BADGES */
+.badge {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 0.35em 0.6em;
+    border-radius: 6px;
+    background: #f8f9fa;
+    color: #111;
+    border: 1px solid #dee2e6;
+}
+
+/* APPLY BUTTON */
+.btn-success {
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.35rem 1rem;
+}
+
+/* EMAIL LINKS */
+.application-emails {
+    font-size: 13px;
+    color: #0d6efd;
+    font-weight: 500;
+}
+.application-emails a {
+    display: block;
+    margin-top: 2px;
+    color: #0d6efd;
+    text-decoration: underline;
+}
+.application-emails a:hover {
+    color: #0a58ca;
+}
+
+/* SIDEBARS */
+.card-body {
+    padding: 1rem;
+}
+.list-group-item {
+    font-size: 14px;
+    border: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+.list-group-item a {
+    color: #111;
+}
+.list-group-item a:hover {
+    color: #0d6efd;
+}
+
+/* SMALL TEXT */
+.text-muted, .small {
+    font-size: 13px;
+    color: #6c757d !important;
+}
+
+/* HOVER EFFECTS */
+.job-card:hover .job-title {
+    color: #0d6efd;
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+    .col-lg-3 { display: none; }
+    .container-fluid { padding: 0 1rem; }
+}
+
+@media (max-width: 576px) {
+    .job-title { font-size: 18px; }
+    .description-text, .requirements-text { font-size: 13px; }
+    .company-avatar { width: 40px; height: 40px; font-size: 16px; }
+}
