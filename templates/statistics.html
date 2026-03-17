@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Job Market Statistics - GraduateINN{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">
+        <i class="bi bi-graph-up me-2"></i>Job Market Statistics
+    </h2>
+    
+    <!-- Stats Overview -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-white-50">Total Jobs</h6>
+                    <h2 class="mb-0">{{ jobs_by_field|sum(attribute='count') }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-white-50">Total Fields</h6>
+                    <h2 class="mb-0">{{ jobs_by_field|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-white-50">Total Locations</h6>
+                    <h2 class="mb-0">{{ jobs_by_location|length }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Jobs by Field -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>Jobs by Field
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="fieldChart"></canvas>
+                    
+                    <div class="mt-4">
+                        {% for field in jobs_by_field %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>{{ field.field }}</span>
+                            <span class="badge bg-primary">{{ field.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Jobs by Location -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="bi bi-geo-alt me-2"></i>Top Locations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="locationChart"></canvas>
+                    
+                    <div class="mt-4">
+                        {% for location in jobs_by_location %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>{{ location.location }}</span>
+                            <span class="badge bg-success">{{ location.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Jobs by Company -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building me-2"></i>Top Companies Hiring
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for company in jobs_by_company %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ company.company }}</span>
+                            <span class="badge bg-warning">{{ company.count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monthly Trends -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-check me-2"></i>Monthly Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Jobs by Field Chart
+    const fieldCtx = document.getElementById('fieldChart').getContext('2d');
+    new Chart(fieldCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for field in jobs_by_field %}'{{ field.field }}',{% endfor %}],
+            datasets: [{
+                data: [{% for field in jobs_by_field %}{{ field.count }},{% endfor %}],
+                backgroundColor: [
+                    '#667eea', '#764ba2', '#ff6b6b', '#4ecdc4', '#45b7d1',
+                    '#f9ca24', '#f0932b', '#eb4d4b', '#6ab04c', '#22a6b3'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Jobs by Location Chart
+    const locationCtx = document.getElementById('locationChart').getContext('2d');
+    new Chart(locationCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for location in jobs_by_location %}'{{ location.location }}',{% endfor %}],
+            datasets: [{
+                label: 'Number of Jobs',
+                data: [{% for location in jobs_by_location %}{{ location.count }},{% endfor %}],
+                backgroundColor: '#667eea'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // Monthly Trends Chart
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for trend in monthly_trends %}'{{ trend.month }}',{% endfor %}],
+            datasets: [{
+                label: 'Jobs Posted',
+                data: [{% for trend in monthly_trends %}{{ trend.count }},{% endfor %}],
+                borderColor: '#764ba2',
+                backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

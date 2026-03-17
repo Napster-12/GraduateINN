@@ -1,39 +1,234 @@
 {% extends "base.html" %}
 
+{% block title %}Admin Dashboard - GraduateINN{% endblock %}
+
 {% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-speedometer2 me-2"></i>Admin Dashboard
+        </h2>
+        <div>
+            <a href="/add_job" class="btn btn-success me-2">
+                <i class="bi bi-plus-circle me-2"></i>Add New Job
+            </a>
+            <a href="/export_jobs" class="btn btn-info">
+                <i class="bi bi-download me-2"></i>Export CSV
+            </a>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-2">Total Jobs</h6>
+                            <h3 class="mb-0">{{ stats.total_jobs }}</h3>
+                        </div>
+                        <i class="bi bi-briefcase fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-success text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-2">Applications</h6>
+                            <h3 class="mb-0">{{ stats.total_applications }}</h3>
+                        </div>
+                        <i class="bi bi-people fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-info text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-2">Total Views</h6>
+                            <h3 class="mb-0">{{ stats.total_views }}</h3>
+                        </div>
+                        <i class="bi bi-eye fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-warning text-white border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-2">Companies</h6>
+                            <h3 class="mb-0">{{ jobs|map(attribute='company')|unique|list|length }}</h3>
+                        </div>
+                        <i class="bi bi-building fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Applications -->
+    {% if stats.recent_applications %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent">
+            <h5 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Applications
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Job Title</th>
+                            <th>Applicant</th>
+                            <th>Email</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for app in stats.recent_applications %}
+                        <tr>
+                            <td>{{ app.title }}</td>
+                            <td>{{ app.applicant_name or 'N/A' }}</td>
+                            <td>{{ app.applicant_email }}</td>
+                            <td>{{ app.application_date }}</td>
+                            <td>
+                                <span class="badge bg-{% if app.status == 'pending' %}warning{% else %}success{% endif %}">
+                                    {{ app.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Jobs Management -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-check me-2"></i>Manage Jobs
+            </h5>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary" onclick="selectAll()">
+                    <i class="bi bi-check-all"></i> Select All
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="bulkDelete()">
+                    <i class="bi bi-trash"></i> Delete Selected
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <form id="bulkDeleteForm" action="/bulk_delete" method="post">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+                                </th>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Company</th>
+                                <th>Location</th>
+                                <th>Field</th>
+                                <th>Views</th>
+                                <th>Featured</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in jobs %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox">
+                                </td>
+                                <td>#{{ job.id }}</td>
+                                <td>
+                                    <a href="/job/{{ job.id }}" target="_blank">
+                                        {{ job.title[:30] }}{% if job.title|length > 30 %}...{% endif %}
+                                    </a>
+                                </td>
+                                <td>{{ job.company }}</td>
+                                <td>{{ job.location }}</td>
+                                <td>{{ job.field }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ job.views or 0 }}</span>
+                                </td>
+                                <td>
+                                    {% if job.is_featured %}
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-star-fill"></i>
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/edit/{{ job.id }}" class="btn btn-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="/delete/{{ job.id }}" class="btn btn-danger" 
+                                           onclick="return confirm('Delete this job?')" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        <a href="/job/{{ job.id }}" class="btn btn-info" target="_blank" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-<h2>Admin Dashboard</h2>
-
-<a href="/add_job" class="btn btn-success mb-3">Add Job</a>
-
-<table class="table">
-
-<tr>
-<th>Title</th>
-<th>Company</th>
-<th>Actions</th>
-</tr>
-
-{% for job in jobs %}
-
-<tr>
-
-<td>{{job.title}}</td>
-
-<td>{{job.company}}</td>
-
-<td>
-
-<a href="/edit/{{job.id}}" class="btn btn-warning btn-sm">Edit</a>
-
-<a href="/delete/{{job.id}}" class="btn btn-danger btn-sm">Delete</a>
-
-</td>
-
-</tr>
-
-{% endfor %}
-
-</table>
-
+<script>
+    function selectAll() {
+        const checkboxes = document.getElementsByClassName('job-checkbox');
+        for (let checkbox of checkboxes) {
+            checkbox.checked = true;
+        }
+        document.getElementById('selectAll').checked = true;
+    }
+    
+    function toggleSelectAll(source) {
+        const checkboxes = document.getElementsByClassName('job-checkbox');
+        for (let checkbox of checkboxes) {
+            checkbox.checked = source.checked;
+        }
+    }
+    
+    function bulkDelete() {
+        const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+        if (checkboxes.length === 0) {
+            alert('Please select at least one job to delete');
+            return;
+        }
+        
+        if (confirm(`Delete ${checkboxes.length} job(s)?`)) {
+            document.getElementById('bulkDeleteForm').submit();
+        }
+    }
+</script>
 {% endblock %}

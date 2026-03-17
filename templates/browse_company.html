@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ company_name }} Jobs - GraduateINN{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item"><a href="/search">Companies</a></li>
+            <li class="breadcrumb-item active">{{ company_name }}</li>
+        </ol>
+    </nav>
+    
+    <div class="row">
+        <!-- Company Profile -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <div class="company-logo-large mb-3">
+                        {{ company_name[0] }}
+                    </div>
+                    <h3>{{ company_name }}</h3>
+                    
+                    {% if stats %}
+                    <div class="row mt-4">
+                        <div class="col-4">
+                            <h5 class="mb-0">{{ stats.job_count }}</h5>
+                            <small class="text-muted">Jobs</small>
+                        </div>
+                        <div class="col-4">
+                            <h5 class="mb-0">{{ stats.location_count }}</h5>
+                            <small class="text-muted">Locations</small>
+                        </div>
+                        <div class="col-4">
+                            <h5 class="mb-0">{{ stats.field_count }}</h5>
+                            <small class="text-muted">Fields</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <a href="/search?company={{ company_name }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-search me-2"></i>View All Jobs
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Jobs List -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-briefcase me-2"></i>Open Positions
+                </h2>
+                <span class="badge bg-primary">{{ jobs|length }} jobs</span>
+            </div>
+            
+            {% if jobs %}
+                {% for job in jobs %}
+                <div class="card job-card mb-4 border-0 shadow-sm hover-lift">
+                    <div class="card-body">
+                        <h4 class="card-title mb-2">
+                            <a href="/job/{{ job.id }}" class="text-decoration-none text-dark">
+                                {{ job.title }}
+                            </a>
+                        </h4>
+                        
+                        <div class="d-flex flex-wrap gap-3 text-muted small mb-3">
+                            <span><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</span>
+                            <span><i class="bi bi-tag me-1"></i>{{ job.field }}</span>
+                            <span><i class="bi bi-mortarboard me-1"></i>{{ job.qualification }}</span>
+                        </div>
+                        
+                        <p class="card-text text-muted mb-3">
+                            {{ job.description[:150] }}...
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                <i class="bi bi-calendar me-1"></i>Closing: {{ job.closing_date }}
+                            </div>
+                            
+                            <div class="btn-group">
+                                <a href="/job/{{ job.id }}" class="btn btn-outline-primary btn-sm">
+                                    View Details
+                                </a>
+                                <a href="/save_job/{{ job.id }}" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-bookmark"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-building display-1 text-muted mb-3"></i>
+                        <h4>No Open Positions</h4>
+                        <p class="text-muted">{{ company_name }} doesn't have any open positions at the moment</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .company-logo-large {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 3rem;
+        margin: 0 auto;
+    }
+    
+    .hover-lift {
+        transition: all 0.3s ease;
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    }
+    
+    .job-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+    
+    .job-card:hover {
+        border-left-color: #667eea;
+    }
+</style>
+{% endblock %}

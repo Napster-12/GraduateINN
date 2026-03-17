@@ -1,407 +1,367 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graduate Inn - Opportunities</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "base.html" %}
 
-        :root {
-            --primary: #0a2540;
-            --primary-light: #1a344d;
-            --accent: #0066cc;
-            --accent-hover: #0052a3;
-            --text-dark: #1e293b;
-            --text-medium: #475569;
-            --text-light: #64748b;
-            --border-light: #e9edf2;
-            --background: #f9fafc;
-            --white: #ffffff;
-            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            --hover-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-        }
+{% block title %}GraduateINN - Find Your Dream Graduate Job{% endblock %}
 
-        body {
-            background-color: var(--background);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            color: var(--text-dark);
-            line-height: 1.5;
-        }
-
-        /* Layout */
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem 1.5rem;
-        }
-
-        /* Sidebar Styles */
-        .sidebar {
-            background: var(--white);
-            border-radius: 16px;
-            border: 1px solid var(--border-light);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .sidebar-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 1.25rem;
-            letter-spacing: -0.01em;
-        }
-
-        .sidebar-divider {
-            height: 1px;
-            background: var(--border-light);
-            margin: 1.25rem 0;
-        }
-
-        .field-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .field-list li {
-            margin-bottom: 0.75rem;
-        }
-
-        .field-list a {
-            color: var(--text-medium);
-            text-decoration: none;
-            font-size: 0.95rem;
-            display: inline-block;
-            padding: 0.2rem 0;
-            transition: color 0.2s ease;
-        }
-
-        .field-list a:hover {
-            color: var(--accent);
-        }
-
-        .company-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .company-list li {
-            color: var(--text-medium);
-            font-size: 0.95rem;
-            padding: 0.6rem 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .company-list li:last-child {
-            border-bottom: none;
-        }
-
-        /* Main Content */
-        .section-header {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 1.75rem;
-            letter-spacing: -0.02em;
-        }
-
-        /* Job Cards */
-        .job-card {
-            background: var(--white);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            margin-bottom: 1.5rem;
-            transition: all 0.25s ease;
-        }
-
-        .job-card:hover {
-            box-shadow: var(--hover-shadow);
-            border-color: #d0d9e8;
-        }
-
-        .card-content {
-            padding: 1.75rem;
-        }
-
-        /* Company Avatar */
-        .company-avatar {
-            width: 48px;
-            height: 48px;
-            background: #f0f4fa;
-            color: var(--primary);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 1.1rem;
-            border: 1px solid var(--border-light);
-        }
-
-        /* Job Header */
-        .job-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .job-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 0.25rem;
-            letter-spacing: -0.01em;
-        }
-
-        .job-meta {
-            color: var(--text-light);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .meta-separator {
-            width: 3px;
-            height: 3px;
-            background: var(--text-light);
-            border-radius: 50%;
-            opacity: 0.5;
-        }
-
-        /* Tags */
-        .job-tags {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
-        }
-
-        .tag {
-            background: #f0f4fa;
-            color: var(--text-medium);
-            font-size: 0.85rem;
-            padding: 0.35rem 1rem;
-            border-radius: 30px;
-            border: 1px solid var(--border-light);
-            font-weight: 450;
-        }
-
-        /* Content Sections */
-        .content-section {
-            margin-bottom: 1.5rem;
-        }
-
-        .content-section h6 {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-        }
-
-        .description-text p {
-            color: var(--text-medium);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin-bottom: 0.5rem;
-        }
-
-        .requirements-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .requirements-list li {
-            color: var(--text-medium);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin-bottom: 0.4rem;
-            padding-left: 1.25rem;
-            position: relative;
-        }
-
-        .requirements-list li::before {
-            content: "•";
-            color: var(--primary);
-            font-size: 1.2rem;
-            position: absolute;
-            left: 0;
-            top: -2px;
-        }
-
-        /* Footer */
-        .job-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1.5rem;
-            padding-top: 1.25rem;
-            border-top: 1px solid var(--border-light);
-        }
-
-        .closing-date {
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-
-        .apply-btn {
-            background: var(--primary);
-            color: white;
-            font-weight: 500;
-            font-size: 0.9rem;
-            padding: 0.6rem 1.75rem;
-            border-radius: 40px;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.2s ease;
-            border: 1px solid var(--primary);
-        }
-
-        .apply-btn:hover {
-            background: var(--primary-light);
-            color: white;
-        }
-
-        /* Empty State */
-        .empty-state {
-            background: var(--white);
-            border: 1px solid var(--border-light);
-            border-radius: 20px;
-            padding: 3rem;
-            text-align: center;
-            color: var(--text-light);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .main-container {
-                padding: 1rem;
-            }
-            
-            .card-content {
-                padding: 1.5rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="main-container">
-        <div class="row g-4">
-
-            <!-- LEFT SIDEBAR -->
-            <div class="col-lg-3 d-none d-lg-block">
-                <div class="sidebar">
-                    <h2 class="sidebar-title">Graduate Inn</h2>
-                    <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 1.5rem;">
-                        Discover internships, WIL placements, and graduate programs in one place.
-                    </p>
-                    
-                    <div class="sidebar-divider"></div>
-                    
-                    <h3 class="sidebar-title" style="font-size: 1rem;">Browse by Field</h3>
-                    <ul class="field-list">
-                        <li><a href="/search?q=Engineering">Engineering</a></li>
-                        <li><a href="/search?q=IT">Information Technology</a></li>
-                        <li><a href="/search?q=Accounting">Accounting</a></li>
-                        <li><a href="/search?q=Marketing">Marketing</a></li>
-                        <li><a href="/search?q=Finance">Finance</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- CENTER FEED -->
-            <div class="col-lg-6">
-                <h1 class="section-header">Latest Opportunities</h1>
-
-                {% if jobs %}
-                    {% for job in jobs %}
-                    <div class="job-card">
-                        <div class="card-content">
-                            <!-- HEADER -->
-                            <div class="job-header">
-                                <div class="company-avatar">{{ job.company[0] }}</div>
-                                <div>
-                                    <h2 class="job-title">{{ job.title }}</h2>
-                                    <div class="job-meta">
-                                        <span>{{ job.company }}</span>
-                                        <span class="meta-separator"></span>
-                                        <span>{{ job.location }}</span>
-                                    </div>
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="hero-section p-5 rounded-4 text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="display-4 fw-bold animate__animated animate__fadeInUp">
+                            Find Your Perfect<br>Graduate Opportunity
+                        </h1>
+                        <p class="lead animate__animated animate__fadeInUp animate__delay-1s">
+                            Discover internships, graduate programs, and entry-level positions from top companies
+                        </p>
+                        
+                        <!-- Quick Stats -->
+                        <div class="row mt-4">
+                            <div class="col-4">
+                                <div class="stat-box">
+                                    <h3 class="fw-bold">{{ stats.total_jobs }}+</h3>
+                                    <p class="small">Active Jobs</p>
                                 </div>
                             </div>
-
-                            <!-- TAGS -->
-                            <div class="job-tags">
-                                <span class="tag">{{ job.field }}</span>
-                                <span class="tag">{{ job.qualification }}</span>
-                            </div>
-
-                            <!-- DESCRIPTION -->
-                            <div class="content-section">
-                                <h6>Description</h6>
-                                <div class="description-text">
-                                    {% for line in job.description.split('-') %}
-                                        {% if line.strip() %}
-                                            <p>{{ line.strip() }}</p>
-                                        {% endif %}
-                                    {% endfor %}
+                            <div class="col-4">
+                                <div class="stat-box">
+                                    <h3 class="fw-bold">{{ stats.total_companies }}+</h3>
+                                    <p class="small">Companies</p>
                                 </div>
                             </div>
-
-                            <!-- REQUIREMENTS -->
-                            <div class="content-section">
-                                <h6>Requirements</h6>
-                                <ul class="requirements-list">
-                                    {% for req in job.requirements.split('\n') %}
-                                        {% if req.strip() %}
-                                            <li>{{ req.strip() }}</li>
-                                        {% endif %}
-                                    {% endfor %}
-                                </ul>
-                            </div>
-
-                            <!-- FOOTER -->
-                            <div class="job-footer">
-                                <span class="closing-date">Closing: {{ job.closing_date }}</span>
-                                <a href="{{ job.application_link }}" target="_blank" class="apply-btn">Apply Now</a>
+                            <div class="col-4">
+                                <div class="stat-box">
+                                    <h3 class="fw-bold">{{ stats.total_locations }}+</h3>
+                                    <p class="small">Locations</p>
+                                </div>
                             </div>
                         </div>
+                        
+                        <!-- Quick Search -->
+                        <div class="mt-4">
+                            <form action="/search" method="get" class="row g-2">
+                                <div class="col-md-5">
+                                    <input type="text" name="q" class="form-control form-control-lg" placeholder="Job title or keyword">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" name="location" class="form-control form-control-lg" placeholder="Location">
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-light btn-lg w-100">
+                                        <i class="bi bi-search me-2"></i>Search
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <p style="margin-bottom: 0.5rem; font-weight: 500;">No opportunities available</p>
-                        <p style="font-size: 0.9rem;">Check back later for new listings</p>
+                    
+                    <div class="col-md-4 d-none d-md-block">
+                        <img src="https://img.freepik.com/free-vector/job-interview-conversation_74855-7566.jpg" 
+                             alt="Graduate" class="img-fluid rounded-4 shadow-lg">
                     </div>
-                {% endif %}
-            </div>
-
-            <!-- RIGHT SIDEBAR -->
-            <div class="col-lg-3 d-none d-lg-block">
-                <div class="sidebar">
-                    <h3 class="sidebar-title">Top Companies</h3>
-                    <ul class="company-list">
-                        <li>Eskom</li>
-                        <li>Sasol</li>
-                        <li>Transnet</li>
-                        <li>Anglo American</li>
-                        <li>Vodacom</li>
-                    </ul>
                 </div>
             </div>
         </div>
     </div>
-</body>
-</html>
+    
+    <!-- Featured Jobs Carousel -->
+    {% if featured_jobs %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-star-fill text-warning me-2"></i>Featured Opportunities
+            </h2>
+            
+            <div id="featuredCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    {% for job in featured_jobs %}
+                    <div class="carousel-item {% if loop.first %}active{% endif %}">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="company-avatar me-3">{{ job.company[0] }}</div>
+                                            <div>
+                                                <h5 class="card-title mb-0">{{ job.title }}</h5>
+                                                <small class="text-muted">{{ job.company }}</small>
+                                            </div>
+                                        </div>
+                                        <p class="card-text">{{ job.description[:150] }}...</p>
+                                        <a href="/job/{{ job.id }}" class="btn btn-outline-primary">View Details</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button class="carousel-control-prev" type="button" data-bs-target="#featuredCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#featuredCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-3">
+            <!-- Categories -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0">
+                        <i class="bi bi-grid me-2"></i>Browse by Field
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for category in categories %}
+                        <a href="/search?field={{ category.name }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi {{ category.icon }} me-2"></i>{{ category.name }}
+                            </span>
+                            <span class="badge bg-primary rounded-pill">{{ category.job_count }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Companies -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building me-2"></i>Top Companies
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for company in top_companies %}
+                        <a href="/company/{{ company.company }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi bi-building me-2"></i>{{ company.company }}
+                            </span>
+                            <span class="badge bg-success rounded-pill">{{ company.job_count }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Job Alert -->
+            <div class="card border-0 shadow-sm bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-bell-fill display-4 mb-3"></i>
+                    <h5>Get Job Alerts</h5>
+                    <p class="small">Receive matching opportunities directly in your inbox</p>
+                    <a href="/job_alerts" class="btn btn-light">Subscribe Now</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <!-- Recent Jobs -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>Latest Opportunities
+                </h2>
+                <a href="/search" class="btn btn-link">View All <i class="bi bi-arrow-right"></i></a>
+            </div>
+            
+            {% if jobs %}
+                {% for job in jobs %}
+                <div class="card job-card mb-4 border-0 shadow-sm hover-lift">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <!-- Header -->
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="d-flex">
+                                        <div class="company-avatar me-3">{{ job.company[0] }}</div>
+                                        <div>
+                                            <h4 class="card-title mb-1">
+                                                <a href="/job/{{ job.id }}" class="text-decoration-none text-dark">
+                                                    {{ job.title }}
+                                                </a>
+                                            </h4>
+                                            <div class="d-flex flex-wrap gap-3 text-muted small">
+                                                <span><i class="bi bi-building me-1"></i>{{ job.company }}</span>
+                                                <span><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</span>
+                                                <span><i class="bi bi-tag me-1"></i>{{ job.field }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-{% if job.job_type == 'Full-time' %}success{% else %}info{% endif %}">
+                                        {{ job.job_type or 'Full-time' }}
+                                    </span>
+                                </div>
+                                
+                                <!-- Description Preview -->
+                                <p class="card-text text-muted mb-3">
+                                    {{ job.description[:200] }}...
+                                </p>
+                                
+                                <!-- Tags -->
+                                <div class="mb-3">
+                                    <span class="badge bg-light text-dark me-2">
+                                        <i class="bi bi-mortarboard me-1"></i>{{ job.qualification }}
+                                    </span>
+                                    {% if job.salary_range %}
+                                    <span class="badge bg-light text-dark me-2">
+                                        <i class="bi bi-currency-dollar me-1"></i>{{ job.salary_range }}
+                                    </span>
+                                    {% endif %}
+                                    <span class="badge bg-light text-dark">
+                                        <i class="bi bi-eye me-1"></i>{{ job.views or 0 }} views
+                                    </span>
+                                </div>
+                                
+                                <!-- Footer -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="text-muted small">
+                                        <i class="bi bi-calendar me-1"></i>Closing: {{ job.closing_date }}
+                                    </div>
+                                    
+                                    <div class="btn-group">
+                                        <a href="/job/{{ job.id }}" class="btn btn-outline-primary btn-sm">
+                                            View Details
+                                        </a>
+                                        <a href="/save_job/{{ job.id }}" class="btn btn-outline-success btn-sm" 
+                                           onclick="return confirm('Save this job?')">
+                                            <i class="bi bi-bookmark"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if current_page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="/?page={{ current_page - 1 }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in range(1, total_pages + 1) %}
+                            {% if page_num == current_page %}
+                            <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                            {% elif page_num <= current_page + 2 and page_num >= current_page - 2 %}
+                            <li class="page-item"><a class="page-link" href="/?page={{ page_num }}">{{ page_num }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if current_page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="/?page={{ current_page + 1 }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+            {% else %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+                        <h4>No Opportunities Available</h4>
+                        <p class="text-muted">Check back later for new listings</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .stat-box {
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        padding: 1rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .company-avatar {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    
+    .hover-lift {
+        transition: all 0.3s ease;
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    }
+    
+    .job-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+    
+    .job-card:hover {
+        border-left-color: #667eea;
+    }
+    
+    .pagination .page-link {
+        border: none;
+        margin: 0 5px;
+        border-radius: 8px;
+        color: #667eea;
+    }
+    
+    .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+</style>
+{% endblock %}
