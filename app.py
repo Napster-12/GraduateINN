@@ -3,7 +3,11 @@ import sqlite3
 from datetime import datetime, timedelta
 import re
 import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from functools import wraps
+import hashlib
 
 app = Flask(__name__)
 app.secret_key = "graduate_inn_secret_key_change_this_in_production"
@@ -11,13 +15,24 @@ app.permanent_session_lifetime = timedelta(hours=2)
 
 DATABASE = "database.db"
 
+# Email configuration - Users will need to configure these with their own email settings
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USERNAME = None
+SMTP_PASSWORD = None
+FROM_EMAIL = None
+
+# ==========================
 # DATABASE CONNECTION
+# ==========================
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
+# ==========================
 # CHECK IF COLUMN EXISTS
+# ==========================
 def column_exists(table_name, column_name):
     """Check if a column exists in a table"""
     conn = get_db()
@@ -26,7 +41,9 @@ def column_exists(table_name, column_name):
     conn.close()
     return column_name in columns
 
+# ==========================
 # GET AVAILABLE FEATURES
+# ==========================
 def get_available_features():
     """Check which features are available in the database"""
     return {
@@ -34,49 +51,49 @@ def get_available_features():
         'views': column_exists('jobs', 'views'),
         'job_type': column_exists('jobs', 'job_type'),
         'experience_level': column_exists('jobs', 'experience_level'),
-        'salary_range': column_exists('jobs', 'salary_range'),
-        'created_date': column_exists('jobs', 'created_date')
+        'salary_range': column_exists('jobs', 'salary_range')
     }
 
-# SAFE QUERY EXECUTION
-def execute_safe_query(query, params=None, fetch_one=False, fetch_all=False):
-    """Execute query safely, handling missing columns"""
-    conn = get_db()
-    try:
-        if params:
-            cursor = conn.execute(query, params)
-        else:
-            cursor = conn.execute(query)
-        
-        if fetch_one:
-            result = cursor.fetchone()
-        elif fetch_all:
-            result = cursor.fetchall()
-        else:
-            result = None
-            conn.commit()
-        
-        conn.close()
-        return result
-    except sqlite3.OperationalError as e:
-        conn.close()
-        if "no such column" in str(e):
-            print(f"Warning: {e}")
-            if fetch_one:
-                return None
-            elif fetch_all:
-                return []
-            else:
-                return None
-        else:
-            raise e
+# ==========================
+# HASH PASSWORD
+# ==========================
+def hash_password(password):
+    """Hash a password using SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
-# INITIALIZE DATABASE (SAFE VERSION)
+def verify_password(password, hashed):
+    """Verify a password against its hash"""
+    return hash_password(password) == hashed
+
+# ==========================
+# INITIALIZE DATABASE
+# ==========================
 def init_db():
-    """Initialize database with base tables"""
+    """Initialize database with all tables"""
     conn = get_db()
     
-    # Create base jobs table if not exists
+    # Create users table for self-registration
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        phone TEXT,
+        qualification TEXT,
+        field_of_interest TEXT,
+        location TEXT,
+        is_admin INTEGER DEFAULT 0,
+        is_verified INTEGER DEFAULT 0,
+        verification_token TEXT,
+        reset_token TEXT,
+        reset_token_expiry TEXT,
+        created_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_login TEXT
+    )
+    """)
+    
+    # Create jobs table
     conn.execute("""
     CREATE TABLE IF NOT EXISTS jobs(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,22 +105,315 @@ def init_db():
         description TEXT,
         requirements TEXT,
         application_link TEXT,
-        closing_date TEXT
+        closing_date TEXT,
+        created_date TEXT DEFAULT CURRENT_DATE,
+        salary_range TEXT,
+        job_type TEXT,
+        experience_level TEXT,
+        views INTEGER DEFAULT 0,
+        is_featured INTEGER DEFAULT 0,
+        posted_by INTEGER,
+        FOREIGN KEY (posted_by) REFERENCES users(id)
+    )
+    """)
+    
+    # Create categories table
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS categories(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        icon TEXT,
+        job_count INTEGER DEFAULT 0
+    )
+    """)
+    
+    # Create saved jobs table
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS saved_jobs(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id INTEGER,
+        user_id INTEGER,
+        saved_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (job_id) REFERENCES jobs(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+    
+    # Create applications table
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS applications(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id INTEGER,
+        user_id INTEGER,
+        applicant_name TEXT,
+        applicant_email TEXT,
+        applicant_phone TEXT,
+        cover_letter TEXT,
+        application_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'pending',
+        FOREIGN KEY (job_id) REFERENCES jobs(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+    
+    # Create subscribers table for job alerts
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS subscribers(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        user_id INTEGER,
+        field TEXT,
+        location TEXT,
+        frequency TEXT DEFAULT 'daily',
+        verified INTEGER DEFAULT 0,
+        verification_token TEXT,
+        subscribed_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_sent TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+    
+    # Create email_settings table for admin to configure SMTP
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS email_settings(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        smtp_server TEXT,
+        smtp_port INTEGER,
+        smtp_username TEXT,
+        smtp_password TEXT,
+        from_email TEXT,
+        is_active INTEGER DEFAULT 1,
+        updated_date TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
     
     conn.commit()
+    
+    # Insert default categories if empty
+    categories = conn.execute("SELECT COUNT(*) as count FROM categories").fetchone()
+    if categories['count'] == 0:
+        default_cats = [
+            ('Engineering', 'bi-tools'),
+            ('Information Technology', 'bi-laptop'),
+            ('Accounting', 'bi-calculator'),
+            ('Marketing', 'bi-megaphone'),
+            ('Finance', 'bi-graph-up'),
+            ('Human Resources', 'bi-people'),
+            ('Sales', 'bi-phone'),
+            ('Logistics', 'bi-truck'),
+            ('Healthcare', 'bi-heart-pulse'),
+            ('Education', 'bi-book')
+        ]
+        conn.executemany("INSERT INTO categories (name, icon) VALUES (?, ?)", default_cats)
+        conn.commit()
+    
+    # Insert default admin user if not exists
+    admin = conn.execute("SELECT * FROM users WHERE email = ?", ("admin@graduateinn.com",)).fetchone()
+    if not admin:
+        hashed_password = hash_password("admin123")
+        conn.execute("""
+        INSERT INTO users (full_name, email, password, is_admin, is_verified)
+        VALUES (?, ?, ?, ?, ?)
+        """, ("Administrator", "admin@graduateinn.com", hashed_password, 1, 1))
+        conn.commit()
+    
+    # Insert default email settings if empty
+    email_settings = conn.execute("SELECT COUNT(*) as count FROM email_settings").fetchone()
+    if email_settings['count'] == 0:
+        conn.execute("""
+        INSERT INTO email_settings (smtp_server, smtp_port, smtp_username, smtp_password, from_email)
+        VALUES (?, ?, ?, ?, ?)
+        """, ('smtp.gmail.com', 587, '', '', ''))
+        conn.commit()
+    
     conn.close()
-    print("Base database initialized")
+    print("Database initialized successfully")
 
 init_db()
+
+# ==========================
+# EMAIL FUNCTIONS
+# ==========================
+
+def get_email_settings():
+    """Get email settings from database"""
+    conn = get_db()
+    settings = conn.execute("SELECT * FROM email_settings WHERE is_active = 1 ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    return settings
+
+def send_verification_email(email, token, name):
+    """Send verification email to new user"""
+    settings = get_email_settings()
+    
+    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
+        print("Email settings not configured")
+        return False
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = settings['from_email'] or settings['smtp_username']
+        msg['To'] = email
+        msg['Subject'] = "Verify Your Email - GraduateINN"
+        
+        verification_link = f"http://127.0.0.1:5000/verify_email/{token}"
+        
+        # HTML version
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">GraduateINN</h1>
+                    <p style="color: white; opacity: 0.9; margin: 5px 0 0;">Welcome {name}!</p>
+                </div>
+                <div style="padding: 30px;">
+                    <h2 style="color: #333; margin-top: 0;">Verify Your Email Address</h2>
+                    <p style="color: #666; line-height: 1.6;">Thank you for registering with GraduateINN! Please verify your email address by clicking the button below:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{verification_link}" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 40px; text-decoration: none; border-radius: 50px; display: inline-block; font-weight: bold;">Verify Email</a>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">If the button doesn't work, copy and paste this link into your browser:</p>
+                    <p style="background: #f5f5f5; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 12px;">{verification_link}</p>
+                    <p style="color: #999; font-size: 12px; margin-top: 30px;">This link will expire in 24 hours.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        server = smtplib.SMTP(settings['smtp_server'], settings['smtp_port'])
+        server.starttls()
+        server.login(settings['smtp_username'], settings['smtp_password'])
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+def send_password_reset_email(email, token, name):
+    """Send password reset email"""
+    settings = get_email_settings()
+    
+    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
+        print("Email settings not configured")
+        return False
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = settings['from_email'] or settings['smtp_username']
+        msg['To'] = email
+        msg['Subject'] = "Reset Your Password - GraduateINN"
+        
+        reset_link = f"http://127.0.0.1:5000/reset_password/{token}"
+        
+        # HTML version
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">GraduateINN</h1>
+                    <p style="color: white; opacity: 0.9; margin: 5px 0 0;">Password Reset</p>
+                </div>
+                <div style="padding: 30px;">
+                    <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
+                    <p style="color: #666; line-height: 1.6;">Hello {name}, we received a request to reset your password. Click the button below to create a new password:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_link}" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 40px; text-decoration: none; border-radius: 50px; display: inline-block; font-weight: bold;">Reset Password</a>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">If you didn't request this, please ignore this email.</p>
+                    <p style="color: #999; font-size: 12px; margin-top: 30px;">This link will expire in 1 hour.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        server = smtplib.SMTP(settings['smtp_server'], settings['smtp_port'])
+        server.starttls()
+        server.login(settings['smtp_username'], settings['smtp_password'])
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+def send_job_alert_email(email, jobs):
+    """Send job alert email to subscriber"""
+    settings = get_email_settings()
+    
+    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
+        print("Email settings not configured")
+        return False
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = settings['from_email'] or settings['smtp_username']
+        msg['To'] = email
+        msg['Subject'] = "Your Job Alerts - GraduateINN"
+        
+        jobs_html = ""
+        for job in jobs[:5]:
+            jobs_html += f"""
+            <div style="border-bottom: 1px solid #eee; padding: 20px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #333;">{job['title']}</h3>
+                <p style="margin: 5px 0; color: #666;">
+                    <strong>{job['company']}</strong> • {job['location']}
+                </p>
+                <p style="color: #888; margin: 5px 0;">{job['field']} • Closing: {job['closing_date']}</p>
+                <a href="http://127.0.0.1:5000/job/{job['id']}" style="color: #667eea; text-decoration: none; font-weight: bold;">View Job →</a>
+            </div>
+            """
+        
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h2 style="color: white; margin: 0;">Your Job Alerts</h2>
+                </div>
+                <div style="padding: 30px;">
+                    <p style="color: #666; margin-bottom: 20px;">Here are the latest opportunities matching your preferences:</p>
+                    {jobs_html}
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <a href="http://127.0.0.1:5000/unsubscribe?email={email}" style="color: #999; font-size: 12px; text-decoration: none;">Unsubscribe</a>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        server = smtplib.SMTP(settings['smtp_server'], settings['smtp_port'])
+        server.starttls()
+        server.login(settings['smtp_username'], settings['smtp_password'])
+        server.send_message(msg)
+        server.quit()
+        
+        return True
+    except Exception as e:
+        print(f"Error sending job alert: {e}")
+        return False
 
 # ==========================
 # HELPER FUNCTIONS
 # ==========================
 
 def get_session_id():
-    """Get or create session ID for saved jobs"""
+    """Get or create session ID for saved jobs (backward compatibility)"""
     if 'session_id' not in session:
         session['session_id'] = secrets.token_hex(16)
     return session['session_id']
@@ -113,34 +423,317 @@ def validate_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
+def validate_password(password):
+    """Validate password strength"""
+    if len(password) < 6:
+        return False, "Password must be at least 6 characters long"
+    return True, "Password is valid"
+
+def login_required(f):
+    """Decorator to require login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    """Decorator to require admin privileges"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session or not session.get('is_admin'):
+            flash('Access denied. Admin privileges required.', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def increment_job_views(job_id):
-    """Increment view count for a job if column exists"""
+    """Increment view count for a job"""
     if column_exists('jobs', 'views'):
         conn = get_db()
         try:
             conn.execute("UPDATE jobs SET views = views + 1 WHERE id = ?", (job_id,))
             conn.commit()
-        except sqlite3.OperationalError:
-            pass  # Column doesn't exist yet
+        except:
+            pass
         finally:
             conn.close()
 
-def get_featured_jobs(limit=3):
-    """Get featured jobs if column exists"""
-    if column_exists('jobs', 'is_featured'):
+# ==========================
+# USER AUTHENTICATION ROUTES
+# ==========================
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """User registration route"""
+    if request.method == "POST":
+        full_name = request.form.get("full_name")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        phone = request.form.get("phone")
+        
+        # Validate inputs
+        if not full_name or not email or not password:
+            flash('All fields are required', 'error')
+            return render_template("register.html")
+        
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template("register.html")
+        
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            flash(message, 'error')
+            return render_template("register.html")
+        
+        if not validate_email(email):
+            flash('Please enter a valid email address', 'error')
+            return render_template("register.html")
+        
         conn = get_db()
-        jobs = conn.execute("""
-        SELECT * FROM jobs 
-        WHERE is_featured = 1 
-        ORDER BY id DESC 
-        LIMIT ?
-        """, (limit,)).fetchall()
+        
+        # Check if email already exists
+        existing = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if existing:
+            conn.close()
+            flash('Email already registered. Please log in.', 'error')
+            return redirect(url_for('login'))
+        
+        # Generate verification token
+        verification_token = secrets.token_urlsafe(32)
+        hashed_password = hash_password(password)
+        
+        # Insert new user
+        conn.execute("""
+        INSERT INTO users (full_name, email, password, phone, verification_token)
+        VALUES (?, ?, ?, ?, ?)
+        """, (full_name, email, hashed_password, phone, verification_token))
+        conn.commit()
         conn.close()
-        return jobs
-    return []
+        
+        # Send verification email
+        if send_verification_email(email, verification_token, full_name):
+            flash('Registration successful! Please check your email to verify your account.', 'success')
+        else:
+            flash('Registration successful! Email service not configured. Please contact admin.', 'warning')
+        
+        return redirect(url_for('login'))
+    
+    return render_template("register.html")
+
+@app.route("/verify_email/<token>")
+def verify_email(token):
+    """Verify user email"""
+    conn = get_db()
+    
+    user = conn.execute("SELECT * FROM users WHERE verification_token = ?", (token,)).fetchone()
+    
+    if user:
+        conn.execute("UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?", (user['id'],))
+        conn.commit()
+        conn.close()
+        flash('Your email has been verified! You can now log in.', 'success')
+    else:
+        conn.close()
+        flash('Invalid or expired verification link.', 'error')
+    
+    return redirect(url_for('login'))
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """User login route"""
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        remember = request.form.get("remember")
+        
+        if not email or not password:
+            flash('Please enter both email and password', 'error')
+            return render_template("login.html")
+        
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        conn.close()
+        
+        if user and verify_password(password, user['password']):
+            if user['is_verified'] == 0:
+                flash('Please verify your email before logging in', 'warning')
+                return render_template("login.html")
+            
+            # Set session
+            session['user_id'] = user['id']
+            session['user_name'] = user['full_name']
+            session['user_email'] = user['email']
+            session['is_admin'] = user['is_admin']
+            session.permanent = remember == 'on'
+            
+            # Update last login
+            conn = get_db()
+            conn.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
+            conn.commit()
+            conn.close()
+            
+            flash(f'Welcome back, {user["full_name"]}!', 'success')
+            
+            # Redirect to requested page or home
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid email or password', 'error')
+    
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    """User logout route"""
+    session.clear()
+    flash('You have been logged out', 'success')
+    return redirect(url_for('index'))
+
+@app.route("/forgot_password", methods=["GET", "POST"])
+def forgot_password():
+    """Forgot password route"""
+    if request.method == "POST":
+        email = request.form.get("email")
+        
+        if not email or not validate_email(email):
+            flash('Please enter a valid email address', 'error')
+            return render_template("forgot_password.html")
+        
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        
+        if user:
+            # Generate reset token (valid for 1 hour)
+            reset_token = secrets.token_urlsafe(32)
+            expiry = (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
+            
+            conn.execute("""
+            UPDATE users SET reset_token = ?, reset_token_expiry = ?
+            WHERE id = ?
+            """, (reset_token, expiry, user['id']))
+            conn.commit()
+            
+            # Send reset email
+            send_password_reset_email(email, reset_token, user['full_name'])
+        
+        conn.close()
+        
+        # Always show success message (don't reveal if email exists)
+        flash('If your email is registered, you will receive a password reset link.', 'info')
+        return redirect(url_for('login'))
+    
+    return render_template("forgot_password.html")
+
+@app.route("/reset_password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    """Reset password route"""
+    if request.method == "POST":
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template("reset_password.html", token=token)
+        
+        is_valid, message = validate_password(password)
+        if not is_valid:
+            flash(message, 'error')
+            return render_template("reset_password.html", token=token)
+        
+        conn = get_db()
+        
+        # Find user with valid token
+        user = conn.execute("""
+        SELECT * FROM users 
+        WHERE reset_token = ? AND reset_token_expiry > CURRENT_TIMESTAMP
+        """, (token,)).fetchone()
+        
+        if user:
+            hashed_password = hash_password(password)
+            conn.execute("""
+            UPDATE users 
+            SET password = ?, reset_token = NULL, reset_token_expiry = NULL
+            WHERE id = ?
+            """, (hashed_password, user['id']))
+            conn.commit()
+            conn.close()
+            
+            flash('Your password has been reset successfully! Please log in.', 'success')
+            return redirect(url_for('login'))
+        else:
+            conn.close()
+            flash('Invalid or expired reset link', 'error')
+            return redirect(url_for('forgot_password'))
+    
+    return render_template("reset_password.html", token=token)
+
+@app.route("/profile")
+@login_required
+def profile():
+    """User profile page"""
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    
+    # Get user's saved jobs
+    saved_jobs = conn.execute("""
+    SELECT j.*, sj.saved_date 
+    FROM saved_jobs sj
+    JOIN jobs j ON sj.job_id = j.id
+    WHERE sj.user_id = ?
+    ORDER BY sj.saved_date DESC
+    """, (session['user_id'],)).fetchall()
+    
+    # Get user's applications
+    applications = conn.execute("""
+    SELECT a.*, j.title, j.company 
+    FROM applications a
+    JOIN jobs j ON a.job_id = j.id
+    WHERE a.user_id = ?
+    ORDER BY a.application_date DESC
+    """, (session['user_id'],)).fetchall()
+    
+    conn.close()
+    
+    return render_template("profile.html", user=user, saved_jobs=saved_jobs, applications=applications)
+
+@app.route("/profile/edit", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    """Edit user profile"""
+    if request.method == "POST":
+        full_name = request.form.get("full_name")
+        phone = request.form.get("phone")
+        qualification = request.form.get("qualification")
+        field_of_interest = request.form.get("field_of_interest")
+        location = request.form.get("location")
+        
+        conn = get_db()
+        conn.execute("""
+        UPDATE users 
+        SET full_name = ?, phone = ?, qualification = ?, field_of_interest = ?, location = ?
+        WHERE id = ?
+        """, (full_name, phone, qualification, field_of_interest, location, session['user_id']))
+        conn.commit()
+        conn.close()
+        
+        session['user_name'] = full_name
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('profile'))
+    
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    conn.close()
+    
+    return render_template("edit_profile.html", user=user)
 
 # ==========================
-# HOME PAGE (SAFE VERSION)
+# HOME PAGE
 # ==========================
 @app.route("/")
 def index():
@@ -151,7 +744,7 @@ def index():
     
     conn = get_db()
     
-    # Build query based on available features
+    # Get paginated jobs
     if features['is_featured']:
         jobs = conn.execute("""
         SELECT * FROM jobs
@@ -169,7 +762,7 @@ def index():
     total_jobs = conn.execute("SELECT COUNT(*) as count FROM jobs").fetchone()['count']
     total_pages = (total_jobs + per_page - 1) // per_page
     
-    # Get categories safely
+    # Get categories
     try:
         categories = conn.execute("""
         SELECT c.*, COUNT(j.id) as job_count 
@@ -178,7 +771,7 @@ def index():
         GROUP BY c.id
         ORDER BY job_count DESC
         """).fetchall()
-    except sqlite3.OperationalError:
+    except:
         categories = []
     
     # Get top companies
@@ -190,7 +783,7 @@ def index():
     LIMIT 10
     """).fetchall()
     
-    # Get featured jobs safely
+    # Get featured jobs
     if features['is_featured']:
         featured_jobs = conn.execute("""
         SELECT * FROM jobs 
@@ -221,15 +814,14 @@ def index():
                          features=features)
 
 # ==========================
-# JOB DETAILS (SAFE VERSION)
+# JOB DETAILS
 # ==========================
 @app.route("/job/<int:id>")
 def job_details(id):
     features = get_available_features()
     
-    # Increment view count if feature available
-    if features['views']:
-        increment_job_views(id)
+    # Increment view count
+    increment_job_views(id)
     
     conn = get_db()
     
@@ -248,17 +840,14 @@ def job_details(id):
     LIMIT 3
     """, (job['field'], id)).fetchall()
     
-    # Check if job is saved (if table exists)
+    # Check if job is saved by user
     is_saved = False
-    try:
-        session_id = get_session_id()
+    if 'user_id' in session:
         saved = conn.execute("""
         SELECT id FROM saved_jobs 
-        WHERE job_id = ? AND session_id = ?
-        """, (id, session_id)).fetchone()
+        WHERE job_id = ? AND user_id = ?
+        """, (id, session['user_id'])).fetchone()
         is_saved = bool(saved)
-    except sqlite3.OperationalError:
-        pass  # Table doesn't exist yet
     
     conn.close()
     
@@ -269,7 +858,7 @@ def job_details(id):
                          features=features)
 
 # ==========================
-# SEARCH JOBS (SAFE VERSION)
+# SEARCH JOBS
 # ==========================
 @app.route("/search")
 def search():
@@ -341,45 +930,33 @@ def search():
                          features=features)
 
 # ==========================
-# SAVE JOB (SAFE VERSION)
+# SAVE JOB
 # ==========================
 @app.route("/save_job/<int:job_id>")
+@login_required
 def save_job(job_id):
     try:
-        session_id = get_session_id()
-        
         conn = get_db()
-        
-        # Create table if not exists
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS saved_jobs(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            job_id INTEGER,
-            session_id TEXT,
-            saved_date TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
         
         # Check if already saved
         existing = conn.execute("""
         SELECT id FROM saved_jobs 
-        WHERE job_id = ? AND session_id = ?
-        """, (job_id, session_id)).fetchone()
+        WHERE job_id = ? AND user_id = ?
+        """, (job_id, session['user_id'])).fetchone()
         
         if not existing:
             conn.execute("""
-            INSERT INTO saved_jobs (job_id, session_id)
+            INSERT INTO saved_jobs (job_id, user_id)
             VALUES (?, ?)
-            """, (job_id, session_id))
+            """, (job_id, session['user_id']))
             conn.commit()
             flash('Job saved successfully!', 'success')
         else:
             flash('Job already saved', 'info')
         
         conn.close()
-    except sqlite3.OperationalError as e:
+    except Exception as e:
         flash('Error saving job', 'error')
-        print(f"Error: {e}")
     
     return redirect(request.referrer or url_for('index'))
 
@@ -387,20 +964,19 @@ def save_job(job_id):
 # REMOVE SAVED JOB
 # ==========================
 @app.route("/remove_saved_job/<int:job_id>")
+@login_required
 def remove_saved_job(job_id):
     try:
-        session_id = get_session_id()
-        
         conn = get_db()
         conn.execute("""
         DELETE FROM saved_jobs 
-        WHERE job_id = ? AND session_id = ?
-        """, (job_id, session_id))
+        WHERE job_id = ? AND user_id = ?
+        """, (job_id, session['user_id']))
         conn.commit()
         conn.close()
         
         flash('Job removed from saved', 'success')
-    except sqlite3.OperationalError:
+    except:
         flash('Error removing job', 'error')
     
     return redirect(url_for('saved_jobs'))
@@ -409,8 +985,8 @@ def remove_saved_job(job_id):
 # SAVED JOBS PAGE
 # ==========================
 @app.route("/saved_jobs")
+@login_required
 def saved_jobs():
-    session_id = get_session_id()
     jobs = []
     
     try:
@@ -419,12 +995,13 @@ def saved_jobs():
         SELECT j.*, sj.saved_date 
         FROM saved_jobs sj
         JOIN jobs j ON sj.job_id = j.id
-        WHERE sj.session_id = ?
+        WHERE sj.user_id = ?
         ORDER BY sj.saved_date DESC
-        """, (session_id,)).fetchall()
+        """, (session['user_id'],)).fetchall()
         conn.close()
-    except sqlite3.OperationalError:
-        flash('No saved jobs yet', 'info')
+    except Exception as e:
+        flash('Error loading saved jobs', 'error')
+        print(f"Error: {e}")
     
     return render_template("saved_jobs.html", jobs=jobs)
 
@@ -432,6 +1009,7 @@ def saved_jobs():
 # APPLY FOR JOB
 # ==========================
 @app.route("/apply/<int:job_id>", methods=["GET", "POST"])
+@login_required
 def apply_job(job_id):
     conn = get_db()
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -441,41 +1019,32 @@ def apply_job(job_id):
         return redirect(url_for('index'))
     
     if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        phone = request.form["phone"]
+        name = request.form.get("name")
+        email = request.form.get("email")
+        phone = request.form.get("phone")
+        cover_letter = request.form.get("cover_letter")
         
         # Validate email
         if not validate_email(email):
             flash('Please enter a valid email address', 'error')
             return render_template("apply.html", job=job)
         
-        # Create applications table if not exists
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS applications(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            job_id INTEGER,
-            applicant_name TEXT,
-            applicant_email TEXT,
-            applicant_phone TEXT,
-            application_date TEXT DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'pending'
-        )
-        """)
-        
         # Save application
         conn.execute("""
-        INSERT INTO applications (job_id, applicant_name, applicant_email, applicant_phone)
-        VALUES (?, ?, ?, ?)
-        """, (job_id, name, email, phone))
+        INSERT INTO applications (job_id, user_id, applicant_name, applicant_email, applicant_phone, cover_letter)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (job_id, session['user_id'], name, email, phone, cover_letter))
         conn.commit()
         conn.close()
         
         flash('Application submitted successfully!', 'success')
         return redirect(url_for('job_details', id=job_id))
     
+    # Pre-fill with user data
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
     conn.close()
-    return render_template("apply.html", job=job)
+    
+    return render_template("apply.html", job=job, user=user)
 
 # ==========================
 # BROWSE BY FIELD
@@ -493,7 +1062,7 @@ def browse_by_field(field_name):
         field_info = conn.execute("""
         SELECT * FROM categories WHERE name LIKE ?
         """, (f"%{field_name}%",)).fetchone()
-    except sqlite3.OperationalError:
+    except:
         field_info = None
     
     conn.close()
@@ -543,20 +1112,6 @@ def quick_apply():
         return jsonify({"success": False, "message": "Invalid email"})
     
     conn = get_db()
-    
-    # Create applications table if not exists
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS applications(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        job_id INTEGER,
-        applicant_name TEXT,
-        applicant_email TEXT,
-        applicant_phone TEXT,
-        application_date TEXT DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'pending'
-    )
-    """)
-    
     conn.execute("""
     INSERT INTO applications (job_id, applicant_email, application_date)
     VALUES (?, ?, CURRENT_TIMESTAMP)
@@ -572,62 +1127,217 @@ def quick_apply():
 @app.route("/job_alerts", methods=["GET", "POST"])
 def job_alerts():
     if request.method == "POST":
-        email = request.form["email"]
+        email = request.form.get("email")
         field = request.form.get("field", "")
+        location = request.form.get("location", "")
+        frequency = request.form.get("frequency", "daily")
         
-        if validate_email(email):
-            # Store in session for now
-            session['alert_email'] = email
-            session['alert_field'] = field
-            flash('Job alert set up successfully!', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Invalid email address', 'error')
+        if not email or not validate_email(email):
+            flash('Please enter a valid email address', 'error')
+            return redirect(url_for('job_alerts'))
+        
+        conn = get_db()
+        
+        try:
+            # Check if user is logged in
+            user_id = session.get('user_id')
+            
+            # Generate verification token
+            verification_token = secrets.token_urlsafe(32)
+            
+            # Check if email already exists
+            existing = conn.execute("SELECT * FROM subscribers WHERE email = ?", (email,)).fetchone()
+            
+            if existing:
+                if existing['verified'] == 1:
+                    flash('This email is already subscribed to job alerts', 'info')
+                else:
+                    # Update existing unverified subscription
+                    conn.execute("""
+                    UPDATE subscribers 
+                    SET field = ?, location = ?, frequency = ?, verification_token = ?, subscribed_date = CURRENT_TIMESTAMP, user_id = ?
+                    WHERE email = ?
+                    """, (field, location, frequency, verification_token, user_id, email))
+                    conn.commit()
+                    
+                    # Send verification email
+                    if send_verification_email(email, verification_token, "Subscriber"):
+                        flash('Verification email sent! Please check your inbox.', 'success')
+                    else:
+                        flash('Email service not configured. Please contact the administrator.', 'error')
+            else:
+                # Insert new subscriber
+                conn.execute("""
+                INSERT INTO subscribers (email, user_id, field, location, frequency, verification_token)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (email, user_id, field, location, frequency, verification_token))
+                conn.commit()
+                
+                # Send verification email
+                if send_verification_email(email, verification_token, "Subscriber"):
+                    flash('Verification email sent! Please check your inbox to confirm your subscription.', 'success')
+                else:
+                    flash('Email service not configured. Please contact the administrator.', 'error')
+                    
+        except Exception as e:
+            flash('Error setting up job alert. Please try again.', 'error')
+            print(f"Job alert error: {e}")
+        finally:
+            conn.close()
+        
+        return redirect(url_for('job_alerts'))
     
     return render_template("job_alerts.html")
 
 # ==========================
-# ADMIN LOGIN
+# VERIFY SUBSCRIPTION
 # ==========================
-@app.route("/admin", methods=["GET", "POST"])
-def admin_login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        
-        if username == "admin" and password == "admin123":
-            session["admin"] = True
-            session.permanent = True
-            flash('Login successful!', 'success')
-            return redirect(url_for("dashboard"))
-        else:
-            flash('Invalid credentials', 'error')
+@app.route("/verify_subscription/<token>")
+def verify_subscription(token):
+    conn = get_db()
     
-    return render_template("admin_login.html")
+    # Find subscriber with this token
+    subscriber = conn.execute("SELECT * FROM subscribers WHERE verification_token = ?", (token,)).fetchone()
+    
+    if subscriber:
+        # Verify the subscriber
+        conn.execute("UPDATE subscribers SET verified = 1, verification_token = NULL WHERE id = ?", (subscriber['id'],))
+        conn.commit()
+        conn.close()
+        flash('Your email has been verified! You will now receive job alerts.', 'success')
+    else:
+        conn.close()
+        flash('Invalid or expired verification link.', 'error')
+    
+    return redirect(url_for('index'))
 
 # ==========================
-# ADMIN DASHBOARD (SAFE VERSION)
+# UNSUBSCRIBE FROM JOB ALERTS
+# ==========================
+@app.route("/unsubscribe", methods=["GET"])
+def unsubscribe():
+    email = request.args.get('email')
+    
+    if not email or not validate_email(email):
+        flash('Invalid email address', 'error')
+        return redirect(url_for('index'))
+    
+    conn = get_db()
+    try:
+        # Delete subscriber
+        result = conn.execute("DELETE FROM subscribers WHERE email = ?", (email,))
+        conn.commit()
+        
+        if result.rowcount > 0:
+            flash('You have been successfully unsubscribed from job alerts.', 'success')
+        else:
+            flash('Email not found in our subscriber list.', 'info')
+    except Exception as e:
+        flash('Error processing unsubscribe request.', 'error')
+        print(f"Unsubscribe error: {e}")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('index'))
+
+# ==========================
+# ADMIN EMAIL SETTINGS
+# ==========================
+@app.route("/admin/email_settings", methods=["GET", "POST"])
+@admin_required
+def admin_email_settings():
+    if request.method == "POST":
+        smtp_server = request.form.get("smtp_server")
+        smtp_port = request.form.get("smtp_port", 587, type=int)
+        smtp_username = request.form.get("smtp_username")
+        smtp_password = request.form.get("smtp_password")
+        from_email = request.form.get("from_email", smtp_username)
+        
+        conn = get_db()
+        
+        # Deactivate old settings
+        conn.execute("UPDATE email_settings SET is_active = 0")
+        
+        # Insert new settings
+        conn.execute("""
+        INSERT INTO email_settings (smtp_server, smtp_port, smtp_username, smtp_password, from_email)
+        VALUES (?, ?, ?, ?, ?)
+        """, (smtp_server, smtp_port, smtp_username, smtp_password, from_email))
+        
+        conn.commit()
+        conn.close()
+        
+        flash('Email settings updated successfully!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    # GET request - show current settings
+    settings = get_email_settings()
+    return render_template("admin_email_settings.html", settings=settings)
+
+# ==========================
+# TEST EMAIL (Admin only)
+# ==========================
+@app.route("/admin/test_email")
+@admin_required
+def admin_test_email():
+    settings = get_email_settings()
+    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
+        flash('Please configure email settings first', 'error')
+        return redirect(url_for('admin_email_settings'))
+    
+    test_token = secrets.token_urlsafe(16)
+    test_email = settings['smtp_username']
+    
+    if send_verification_email(test_email, test_token, "Admin"):
+        flash(f'Test email sent successfully to {test_email}! Check your inbox.', 'success')
+    else:
+        flash('Failed to send test email. Check your email configuration.', 'error')
+    
+    return redirect(url_for('dashboard'))
+
+# ==========================
+# ADMIN DASHBOARD
 # ==========================
 @app.route("/dashboard")
+@admin_required
 def dashboard():
-    if "admin" not in session:
-        return redirect(url_for("admin_login"))
-    
     features = get_available_features()
     conn = get_db()
     
     # Get all jobs
     jobs = conn.execute("SELECT * FROM jobs ORDER BY id DESC").fetchall()
     
-    # Get statistics safely
+    # Get users count
+    users_count = conn.execute("SELECT COUNT(*) as count FROM users").fetchone()['count']
+    verified_users = conn.execute("SELECT COUNT(*) as count FROM users WHERE is_verified = 1").fetchone()['count']
+    
+    # Get subscribers count
+    subscribers_count = 0
+    verified_subscribers = 0
+    try:
+        subscribers_count = conn.execute("SELECT COUNT(*) as count FROM subscribers").fetchone()['count']
+        verified_subscribers = conn.execute("SELECT COUNT(*) as count FROM subscribers WHERE verified = 1").fetchone()['count']
+    except:
+        pass
+    
+    # Get email settings status
+    email_settings = get_email_settings()
+    email_configured = bool(email_settings and email_settings['smtp_username'] and email_settings['smtp_password'])
+    
+    # Get statistics
     stats = {
         'total_jobs': conn.execute("SELECT COUNT(*) as count FROM jobs").fetchone()['count'],
         'total_applications': 0,
         'total_views': 0,
+        'total_users': users_count,
+        'verified_users': verified_users,
+        'total_subscribers': subscribers_count,
+        'verified_subscribers': verified_subscribers,
+        'email_configured': email_configured,
         'recent_applications': []
     }
     
-    # Try to get applications if table exists
+    # Try to get applications
     try:
         stats['total_applications'] = conn.execute("SELECT COUNT(*) as count FROM applications").fetchone()['count']
         stats['recent_applications'] = conn.execute("""
@@ -637,15 +1347,15 @@ def dashboard():
             ORDER BY a.application_date DESC
             LIMIT 5
         """).fetchall()
-    except sqlite3.OperationalError:
+    except:
         pass
     
-    # Try to get total views if column exists
+    # Try to get total views
     if features['views']:
         try:
             total_views = conn.execute("SELECT SUM(views) as total FROM jobs").fetchone()
             stats['total_views'] = total_views['total'] if total_views and total_views['total'] else 0
-        except sqlite3.OperationalError:
+        except:
             pass
     
     conn.close()
@@ -656,17 +1366,47 @@ def dashboard():
                          features=features)
 
 # ==========================
-# ADD JOB (SAFE VERSION)
+# VIEW USERS (Admin only)
+# ==========================
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    conn = get_db()
+    users = conn.execute("""
+    SELECT * FROM users 
+    ORDER BY is_admin DESC, created_date DESC
+    """).fetchall()
+    conn.close()
+    
+    return render_template("admin_users.html", users=users)
+
+# ==========================
+# VIEW SUBSCRIBERS (Admin only)
+# ==========================
+@app.route("/admin/subscribers")
+@admin_required
+def admin_subscribers():
+    conn = get_db()
+    subscribers = conn.execute("""
+    SELECT s.*, u.full_name, u.email as user_email
+    FROM subscribers s
+    LEFT JOIN users u ON s.user_id = u.id
+    ORDER BY s.verified DESC, s.subscribed_date DESC
+    """).fetchall()
+    conn.close()
+    
+    return render_template("admin_subscribers.html", subscribers=subscribers)
+
+# ==========================
+# ADD JOB
 # ==========================
 @app.route("/add_job", methods=["GET", "POST"])
+@admin_required
 def add_job():
-    if "admin" not in session:
-        return redirect(url_for("admin_login"))
-    
     features = get_available_features()
     
     if request.method == "POST":
-        # Get base form data
+        # Get form data
         title = request.form["title"]
         company = request.form["company"]
         location = request.form["location"]
@@ -679,56 +1419,32 @@ def add_job():
         
         conn = get_db()
         
-        # Build dynamic insert based on available columns
-        if features['salary_range'] or features['job_type'] or features['experience_level'] or features['is_featured']:
-            # Get optional fields
+        # Insert job
+        if all(features.values()):
             salary_range = request.form.get("salary_range", "")
             job_type = request.form.get("job_type", "Full-time")
             experience_level = request.form.get("experience_level", "Entry Level")
             is_featured = 1 if request.form.get("is_featured") else 0
             
-            # Check which columns actually exist
-            columns = ["title", "company", "location", "field", "qualification",
-                      "description", "requirements", "application_link", "closing_date"]
-            values = [title, company, location, field, qualification,
-                     description, requirements, application_link, closing_date]
-            placeholders = ["?"] * 9
-            
-            if features['salary_range'] and 'salary_range' in request.form:
-                columns.append("salary_range")
-                values.append(salary_range)
-                placeholders.append("?")
-            
-            if features['job_type'] and 'job_type' in request.form:
-                columns.append("job_type")
-                values.append(job_type)
-                placeholders.append("?")
-            
-            if features['experience_level'] and 'experience_level' in request.form:
-                columns.append("experience_level")
-                values.append(experience_level)
-                placeholders.append("?")
-            
-            if features['is_featured']:
-                columns.append("is_featured")
-                values.append(is_featured)
-                placeholders.append("?")
-            
-            query = f"""
-            INSERT INTO jobs ({', '.join(columns)})
-            VALUES ({', '.join(placeholders)})
-            """
-            conn.execute(query, values)
-        else:
-            # Basic insert only
             conn.execute("""
             INSERT INTO jobs
             (title, company, location, field, qualification,
-             description, requirements, application_link, closing_date)
-            VALUES (?,?,?,?,?,?,?,?,?)
+             description, requirements, application_link, closing_date,
+             salary_range, job_type, experience_level, is_featured, posted_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (title, company, location, field, qualification,
-             description, requirements, application_link, closing_date))
+             description, requirements, application_link, closing_date,
+             salary_range, job_type, experience_level, is_featured, session['user_id']))
+        else:
+            conn.execute("""
+            INSERT INTO jobs
+            (title, company, location, field, qualification,
+             description, requirements, application_link, closing_date, posted_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+            """,
+            (title, company, location, field, qualification,
+             description, requirements, application_link, closing_date, session['user_id']))
         
         conn.commit()
         conn.close()
@@ -739,23 +1455,17 @@ def add_job():
     return render_template("add_job.html", features=features)
 
 # ==========================
-# EDIT JOB (SAFE VERSION)
+# EDIT JOB
 # ==========================
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
+@admin_required
 def edit_job(id):
-    if "admin" not in session:
-        return redirect(url_for("admin_login"))
-    
     features = get_available_features()
     conn = get_db()
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (id,)).fetchone()
     
-    if not job:
-        flash('Job not found', 'error')
-        return redirect(url_for('dashboard'))
-    
     if request.method == "POST":
-        # Get base form data
+        # Get form data
         title = request.form["title"]
         company = request.form["company"]
         location = request.form["location"]
@@ -766,41 +1476,24 @@ def edit_job(id):
         application_link = request.form["application_link"]
         closing_date = request.form["closing_date"]
         
-        # Build dynamic update based on available columns
-        if features['salary_range'] or features['job_type'] or features['experience_level'] or features['is_featured']:
-            # Get optional fields
+        # Update job
+        if all(features.values()):
             salary_range = request.form.get("salary_range", "")
             job_type = request.form.get("job_type", "Full-time")
             experience_level = request.form.get("experience_level", "Entry Level")
             is_featured = 1 if request.form.get("is_featured") else 0
             
-            # Build SET clause dynamically
-            set_clause = "title=?, company=?, location=?, field=?, qualification=?, description=?, requirements=?, application_link=?, closing_date=?"
-            values = [title, company, location, field, qualification,
-                     description, requirements, application_link, closing_date]
-            
-            if features['salary_range']:
-                set_clause += ", salary_range=?"
-                values.append(salary_range)
-            
-            if features['job_type']:
-                set_clause += ", job_type=?"
-                values.append(job_type)
-            
-            if features['experience_level']:
-                set_clause += ", experience_level=?"
-                values.append(experience_level)
-            
-            if features['is_featured']:
-                set_clause += ", is_featured=?"
-                values.append(is_featured)
-            
-            values.append(id)  # for WHERE clause
-            
-            query = f"UPDATE jobs SET {set_clause} WHERE id=?"
-            conn.execute(query, values)
+            conn.execute("""
+            UPDATE jobs SET
+            title=?, company=?, location=?, field=?, qualification=?,
+            description=?, requirements=?, application_link=?, closing_date=?,
+            salary_range=?, job_type=?, experience_level=?, is_featured=?
+            WHERE id=?
+            """,
+            (title, company, location, field, qualification,
+             description, requirements, application_link, closing_date,
+             salary_range, job_type, experience_level, is_featured, id))
         else:
-            # Basic update only
             conn.execute("""
             UPDATE jobs SET
             title=?, company=?, location=?, field=?, qualification=?,
@@ -821,10 +1514,8 @@ def edit_job(id):
 # DELETE JOB
 # ==========================
 @app.route("/delete/<int:id>")
+@admin_required
 def delete_job(id):
-    if "admin" not in session:
-        return redirect(url_for("admin_login"))
-    
     conn = get_db()
     conn.execute("DELETE FROM jobs WHERE id = ?", (id,))
     conn.commit()
@@ -837,10 +1528,8 @@ def delete_job(id):
 # BULK DELETE JOBS
 # ==========================
 @app.route("/bulk_delete", methods=["POST"])
+@admin_required
 def bulk_delete():
-    if "admin" not in session:
-        return redirect(url_for("admin_login"))
-    
     job_ids = request.form.getlist("job_ids")
     
     if job_ids:
@@ -857,10 +1546,8 @@ def bulk_delete():
 # EXPORT JOBS TO CSV
 # ==========================
 @app.route("/export_jobs")
+@admin_required
 def export_jobs():
-    if "admin" not in session:
-        return redirect(url_for("admin_login"))
-    
     import csv
     from io import StringIO
     from flask import Response
@@ -907,63 +1594,32 @@ def export_jobs():
     )
 
 # ==========================
-# STATISTICS PAGE
+# ADMIN LOGIN (Legacy)
 # ==========================
-@app.route("/statistics")
-def statistics():
-    features = get_available_features()
-    conn = get_db()
+@app.route("/admin", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
+        conn = get_db()
+        # First check if user exists with admin@graduateinn.com
+        user = conn.execute("SELECT * FROM users WHERE email = ? AND is_admin = 1", ("admin@graduateinn.com",)).fetchone()
+        
+        if user and verify_password(password, user['password']):
+            session['user_id'] = user['id']
+            session['user_name'] = user['full_name']
+            session['user_email'] = user['email']
+            session['is_admin'] = user['is_admin']
+            session.permanent = True
+            
+            flash('Login successful!', 'success')
+            return redirect(url_for("dashboard"))
+        else:
+            flash('Invalid credentials', 'error')
+        conn.close()
     
-    # Jobs by field
-    jobs_by_field = conn.execute("""
-    SELECT field, COUNT(*) as count 
-    FROM jobs 
-    GROUP BY field 
-    ORDER BY count DESC
-    """).fetchall()
-    
-    # Jobs by location
-    jobs_by_location = conn.execute("""
-    SELECT location, COUNT(*) as count 
-    FROM jobs 
-    GROUP BY location 
-    ORDER BY count DESC 
-    LIMIT 10
-    """).fetchall()
-    
-    # Jobs by company
-    jobs_by_company = conn.execute("""
-    SELECT company, COUNT(*) as count 
-    FROM jobs 
-    GROUP BY company 
-    ORDER BY count DESC 
-    LIMIT 10
-    """).fetchall()
-    
-    # Monthly trends (if created_date exists)
-    monthly_trends = []
-    if features['created_date']:
-        try:
-            monthly_trends = conn.execute("""
-            SELECT strftime('%Y-%m', created_date) as month, 
-                   COUNT(*) as count 
-            FROM jobs 
-            WHERE created_date IS NOT NULL 
-            GROUP BY month 
-            ORDER BY month DESC 
-            LIMIT 12
-            """).fetchall()
-        except sqlite3.OperationalError:
-            pass
-    
-    conn.close()
-    
-    return render_template("statistics.html",
-                         jobs_by_field=jobs_by_field,
-                         jobs_by_location=jobs_by_location,
-                         jobs_by_company=jobs_by_company,
-                         monthly_trends=monthly_trends,
-                         features=features)
+    return render_template("admin_login.html")
 
 # ==========================
 # API ENDPOINTS
@@ -1017,31 +1673,38 @@ def page_not_found(e):
 def internal_server_error(e):
     return render_template("500.html"), 500
 
-# ==========================
-# LOGOUT
-# ==========================
-@app.route("/logout")
-def logout():
-    session.clear()
-    flash('Logged out successfully', 'success')
-    return redirect(url_for("index"))
 
-# ==========================
-# RUN MIGRATION CHECK
-# ==========================
-@app.route("/check_migration")
-def check_migration():
-    """Check database migration status"""
-    features = get_available_features()
-    missing_features = [name for name, available in features.items() if not available]
+def send_job_alerts_to_all():
+    conn = get_db()
+
+    # Get all verified subscribers
+    subscribers = conn.execute("""
+        SELECT * FROM subscribers WHERE verified = 1
+    """).fetchall()
+
+    for sub in subscribers:
+        # Get matching jobs
+        jobs = conn.execute("""
+            SELECT * FROM jobs
+            WHERE field LIKE ? AND location LIKE ?
+            ORDER BY id DESC LIMIT 5
+        """, (f"%{sub['field']}%", f"%{sub['location']}%")).fetchall()
+
+        if jobs:
+            send_job_alert_email(sub['email'], jobs)
+
+            # Update last sent
+            conn.execute("""
+                UPDATE subscribers SET last_sent = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (sub['id'],))
     
-    if missing_features:
-        message = f"Missing features: {', '.join(missing_features)}. Please run migrate_db.py"
-        flash(message, 'warning')
-    else:
-        flash('All features are available!', 'success')
-    
-    return redirect(url_for('index'))
+    conn.commit()
+    conn.close()
+@app.route("/send_alerts")
+def send_alerts():
+    send_job_alerts_to_all()
+    return "Alerts sent!"
 
 # ==========================
 # RUN APP
