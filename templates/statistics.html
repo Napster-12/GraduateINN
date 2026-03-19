@@ -1,207 +1,194 @@
 {% extends "base.html" %}
 
-{% block title %}Job Market Statistics - GraduateINN{% endblock %}
+{% block title %}Job Alerts - GraduateINN{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h2 class="mb-4">
-        <i class="bi bi-graph-up me-2"></i>Job Market Statistics
-    </h2>
-    
-    <!-- Stats Overview -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="card bg-primary text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-white-50">Total Jobs</h6>
-                    <h2 class="mb-0">{{ jobs_by_field|sum(attribute='count') }}</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <i class="bi bi-bell-fill display-4 mb-3"></i>
+                    <h3 class="mb-0">Job Alerts</h3>
+                    <p class="text-white-50 mb-0">Get notified about matching opportunities</p>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-success text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-white-50">Total Fields</h6>
-                    <h2 class="mb-0">{{ jobs_by_field|length }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-info text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <h6 class="text-white-50">Total Locations</h6>
-                    <h2 class="mb-0">{{ jobs_by_location|length }}</h2>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row">
-        <!-- Jobs by Field -->
-        <div class="col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0">
-                        <i class="bi bi-pie-chart me-2"></i>Jobs by Field
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="fieldChart"></canvas>
-                    
-                    <div class="mt-4">
-                        {% for field in jobs_by_field %}
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>{{ field.field }}</span>
-                            <span class="badge bg-primary">{{ field.count }}</span>
+                <div class="card-body p-4">
+                    <form method="post" id="alertForm">
+                        <div class="mb-4">
+                            <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control form-control-lg" 
+                                   placeholder="you@example.com" required>
+                            <div class="form-text">We'll send job alerts to this email</div>
                         </div>
-                        {% endfor %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Fields of Interest</label>
+                                <select name="field" class="form-select">
+                                    <option value="">All Fields</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Information Technology">Information Technology</option>
+                                    <option value="Accounting">Accounting</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Human Resources">Human Resources</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Logistics">Logistics</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Education">Education</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Preferred Location</label>
+                                <input type="text" name="location" class="form-control" 
+                                       placeholder="e.g., Johannesburg, Cape Town">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Alert Frequency</label>
+                            <select name="frequency" class="form-select">
+                                <option value="daily">Daily (once per day)</option>
+                                <option value="weekly">Weekly (every Monday)</option>
+                                <option value="instant">Instant (as jobs are posted)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-check mb-4">
+                            <input type="checkbox" class="form-check-input" id="terms" required>
+                            <label class="form-check-label" for="terms">
+                                I agree to receive job alerts via email. You can unsubscribe at any time.
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="bi bi-bell me-2"></i>Subscribe to Alerts
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer bg-light text-center py-3">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <i class="bi bi-shield-check text-success me-2"></i>
+                        <span class="text-muted small">We respect your privacy. Unsubscribe anytime.</span>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Jobs by Location -->
-        <div class="col-md-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0">
-                        <i class="bi bi-geo-alt me-2"></i>Top Locations
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="locationChart"></canvas>
-                    
-                    <div class="mt-4">
-                        {% for location in jobs_by_location %}
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>{{ location.location }}</span>
-                            <span class="badge bg-success">{{ location.count }}</span>
+            
+            <!-- Benefits -->
+            <div class="row g-4 mt-5">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="benefit-icon mb-3">
+                            <i class="bi bi-clock-history display-4 text-primary"></i>
                         </div>
-                        {% endfor %}
+                        <h5>Save Time</h5>
+                        <p class="text-muted">No need to search daily - we'll send matching jobs to your inbox</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="benefit-icon mb-3">
+                            <i class="bi bi-filter-circle display-4 text-success"></i>
+                        </div>
+                        <h5>Filtered Results</h5>
+                        <p class="text-muted">Only receive opportunities that match your preferences</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="benefit-icon mb-3">
+                            <i class="bi bi-bell display-4 text-warning"></i>
+                        </div>
+                        <h5>Instant Alerts</h5>
+                        <p class="text-muted">Be the first to apply with instant notifications</p>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Jobs by Company -->
-        <div class="col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0">
-                        <i class="bi bi-building me-2"></i>Top Companies Hiring
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="list-group list-group-flush">
-                        {% for company in jobs_by_company %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>{{ company.company }}</span>
-                            <span class="badge bg-warning">{{ company.count }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Monthly Trends -->
-        <div class="col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent">
-                    <h5 class="mb-0">
-                        <i class="bi bi-calendar-check me-2"></i>Monthly Trends
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="trendChart"></canvas>
+            
+            <!-- How it works -->
+            <div class="card border-0 bg-light mt-5">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">How it works:</h5>
+                    <ol class="mb-0">
+                        <li class="mb-2">Enter your email and preferences</li>
+                        <li class="mb-2">Check your inbox for a verification email</li>
+                        <li class="mb-2">Click the verification link to confirm</li>
+                        <li>Start receiving job alerts based on your preferences</li>
+                    </ol>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .benefit-icon {
+        width: 80px;
+        height: 80px;
+        line-height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        margin: 0 auto;
+        transition: all 0.3s ease;
+    }
+    
+    .benefit-icon:hover {
+        transform: scale(1.1);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+    }
+    
+    .bg-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+</style>
+
 <script>
-    // Jobs by Field Chart
-    const fieldCtx = document.getElementById('fieldChart').getContext('2d');
-    new Chart(fieldCtx, {
-        type: 'doughnut',
-        data: {
-            labels: [{% for field in jobs_by_field %}'{{ field.field }}',{% endfor %}],
-            datasets: [{
-                data: [{% for field in jobs_by_field %}{{ field.count }},{% endfor %}],
-                backgroundColor: [
-                    '#667eea', '#764ba2', '#ff6b6b', '#4ecdc4', '#45b7d1',
-                    '#f9ca24', '#f0932b', '#eb4d4b', '#6ab04c', '#22a6b3'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-    
-    // Jobs by Location Chart
-    const locationCtx = document.getElementById('locationChart').getContext('2d');
-    new Chart(locationCtx, {
-        type: 'bar',
-        data: {
-            labels: [{% for location in jobs_by_location %}'{{ location.location }}',{% endfor %}],
-            datasets: [{
-                label: 'Number of Jobs',
-                data: [{% for location in jobs_by_location %}{{ location.count }},{% endfor %}],
-                backgroundColor: '#667eea'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            }
-        }
-    });
-    
-    // Monthly Trends Chart
-    const trendCtx = document.getElementById('trendChart').getContext('2d');
-    new Chart(trendCtx, {
-        type: 'line',
-        data: {
-            labels: [{% for trend in monthly_trends %}'{{ trend.month }}',{% endfor %}],
-            datasets: [{
-                label: 'Jobs Posted',
-                data: [{% for trend in monthly_trends %}{{ trend.count }},{% endfor %}],
-                borderColor: '#764ba2',
-                backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            }
-        }
+    document.getElementById('alertForm').addEventListener('submit', function(e) {
+        const btn = document.getElementById('submitBtn');
+        const originalText = btn.innerHTML;
+        
+        // Show loading state
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
+        btn.disabled = true;
+        
+        // Form will submit normally
+        // The loading state will be removed on page reload
     });
 </script>
 {% endblock %}
