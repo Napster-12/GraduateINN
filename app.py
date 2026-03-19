@@ -1,26 +1,32 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask_mail import Mail, Message
 import sqlite3
 from datetime import datetime, timedelta
 import re
 import secrets
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from functools import wraps
 import hashlib
+import csv
+from io import StringIO
+from flask import Response
 
 app = Flask(__name__)
 app.secret_key = "graduate_inn_secret_key_change_this_in_production"
 app.permanent_session_lifetime = timedelta(hours=2)
 
-DATABASE = "database.db"
+# ==========================
+# FLASK-MAIL CONFIGURATION
+# ==========================
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'codnellsmall@gmail.com'
+app.config['MAIL_PASSWORD'] = 'seob qyjh sqzu ifoq'
+app.config['MAIL_DEFAULT_SENDER'] = ('GraduateINN', 'codnellsmall@gmail.com')
 
-# Email configuration - Users will need to configure these with their own email settings
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USERNAME = None
-SMTP_PASSWORD = None
-FROM_EMAIL = None
+mail = Mail(app)
+
+DATABASE = "database.db"
 
 # ==========================
 # DATABASE CONNECTION
@@ -173,20 +179,6 @@ def init_db():
     )
     """)
     
-    # Create email_settings table for admin to configure SMTP
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS email_settings(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        smtp_server TEXT,
-        smtp_port INTEGER,
-        smtp_username TEXT,
-        smtp_password TEXT,
-        from_email TEXT,
-        is_active INTEGER DEFAULT 1,
-        updated_date TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
     conn.commit()
     
     # Insert default categories if empty
@@ -217,45 +209,18 @@ def init_db():
         """, ("Administrator", "admin@graduateinn.com", hashed_password, 1, 1))
         conn.commit()
     
-    # Insert default email settings if empty
-    email_settings = conn.execute("SELECT COUNT(*) as count FROM email_settings").fetchone()
-    if email_settings['count'] == 0:
-        conn.execute("""
-        INSERT INTO email_settings (smtp_server, smtp_port, smtp_username, smtp_password, from_email)
-        VALUES (?, ?, ?, ?, ?)
-        """, ('smtp.gmail.com', 587, '', '', ''))
-        conn.commit()
-    
     conn.close()
     print("Database initialized successfully")
 
 init_db()
 
 # ==========================
-# EMAIL FUNCTIONS
+# EMAIL FUNCTIONS USING FLASK-MAIL
 # ==========================
-
-def get_email_settings():
-    """Get email settings from database"""
-    conn = get_db()
-    settings = conn.execute("SELECT * FROM email_settings WHERE is_active = 1 ORDER BY id DESC LIMIT 1").fetchone()
-    conn.close()
-    return settings
 
 def send_verification_email(email, token, name):
     """Send verification email to new user"""
-    settings = get_email_settings()
-    
-    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
-        print("Email settings not configured")
-        return False
-    
     try:
-        msg = MIMEMultipart('alternative')
-        msg['From'] = settings['from_email'] or settings['smtp_username']
-        msg['To'] = email
-        msg['Subject'] = "Verify Your Email - GraduateINN"
-        
         verification_link = f"http://127.0.0.1:5000/verify_email/{token}"
         
         # HTML version
@@ -282,14 +247,13 @@ def send_verification_email(email, token, name):
         </html>
         """
         
-        msg.attach(MIMEText(html_body, 'html'))
+        msg = Message(
+            subject="Verify Your Email - GraduateINN",
+            recipients=[email],
+            html=html_body
+        )
         
-        server = smtplib.SMTP(settings['smtp_server'], settings['smtp_port'])
-        server.starttls()
-        server.login(settings['smtp_username'], settings['smtp_password'])
-        server.send_message(msg)
-        server.quit()
-        
+        mail.send(msg)
         return True
         
     except Exception as e:
@@ -298,18 +262,7 @@ def send_verification_email(email, token, name):
 
 def send_password_reset_email(email, token, name):
     """Send password reset email"""
-    settings = get_email_settings()
-    
-    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
-        print("Email settings not configured")
-        return False
-    
     try:
-        msg = MIMEMultipart('alternative')
-        msg['From'] = settings['from_email'] or settings['smtp_username']
-        msg['To'] = email
-        msg['Subject'] = "Reset Your Password - GraduateINN"
-        
         reset_link = f"http://127.0.0.1:5000/reset_password/{token}"
         
         # HTML version
@@ -335,14 +288,13 @@ def send_password_reset_email(email, token, name):
         </html>
         """
         
-        msg.attach(MIMEText(html_body, 'html'))
+        msg = Message(
+            subject="Reset Your Password - GraduateINN",
+            recipients=[email],
+            html=html_body
+        )
         
-        server = smtplib.SMTP(settings['smtp_server'], settings['smtp_port'])
-        server.starttls()
-        server.login(settings['smtp_username'], settings['smtp_password'])
-        server.send_message(msg)
-        server.quit()
-        
+        mail.send(msg)
         return True
         
     except Exception as e:
@@ -351,18 +303,7 @@ def send_password_reset_email(email, token, name):
 
 def send_job_alert_email(email, jobs):
     """Send job alert email to subscriber"""
-    settings = get_email_settings()
-    
-    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
-        print("Email settings not configured")
-        return False
-    
     try:
-        msg = MIMEMultipart('alternative')
-        msg['From'] = settings['from_email'] or settings['smtp_username']
-        msg['To'] = email
-        msg['Subject'] = "Your Job Alerts - GraduateINN"
-        
         jobs_html = ""
         for job in jobs[:5]:
             jobs_html += f"""
@@ -395,14 +336,13 @@ def send_job_alert_email(email, jobs):
         </html>
         """
         
-        msg.attach(MIMEText(html_body, 'html'))
+        msg = Message(
+            subject="Your Job Alerts - GraduateINN",
+            recipients=[email],
+            html=html_body
+        )
         
-        server = smtplib.SMTP(settings['smtp_server'], settings['smtp_port'])
-        server.starttls()
-        server.login(settings['smtp_username'], settings['smtp_password'])
-        server.send_message(msg)
-        server.quit()
-        
+        mail.send(msg)
         return True
     except Exception as e:
         print(f"Error sending job alert: {e}")
@@ -698,9 +638,17 @@ def profile():
     ORDER BY a.application_date DESC
     """, (session['user_id'],)).fetchall()
     
+    # Get user's job alert subscriptions
+    subscriptions = conn.execute("""
+    SELECT * FROM subscribers 
+    WHERE user_id = ? OR email = ?
+    ORDER BY subscribed_date DESC
+    """, (session['user_id'], session['user_email'])).fetchall()
+    
     conn.close()
     
-    return render_template("profile.html", user=user, saved_jobs=saved_jobs, applications=applications)
+    return render_template("profile.html", user=user, saved_jobs=saved_jobs, 
+                          applications=applications, subscriptions=subscriptions)
 
 @app.route("/profile/edit", methods=["GET", "POST"])
 @login_required
@@ -1241,58 +1189,66 @@ def unsubscribe():
     return redirect(url_for('index'))
 
 # ==========================
-# ADMIN EMAIL SETTINGS
+# SEND JOB ALERTS TO ALL SUBSCRIBERS
 # ==========================
-@app.route("/admin/email_settings", methods=["GET", "POST"])
-@admin_required
-def admin_email_settings():
-    if request.method == "POST":
-        smtp_server = request.form.get("smtp_server")
-        smtp_port = request.form.get("smtp_port", 587, type=int)
-        smtp_username = request.form.get("smtp_username")
-        smtp_password = request.form.get("smtp_password")
-        from_email = request.form.get("from_email", smtp_username)
-        
-        conn = get_db()
-        
-        # Deactivate old settings
-        conn.execute("UPDATE email_settings SET is_active = 0")
-        
-        # Insert new settings
-        conn.execute("""
-        INSERT INTO email_settings (smtp_server, smtp_port, smtp_username, smtp_password, from_email)
-        VALUES (?, ?, ?, ?, ?)
-        """, (smtp_server, smtp_port, smtp_username, smtp_password, from_email))
-        
-        conn.commit()
-        conn.close()
-        
-        flash('Email settings updated successfully!', 'success')
-        return redirect(url_for('dashboard'))
+def send_job_alerts_to_all():
+    """Send job alerts to all verified subscribers"""
+    conn = get_db()
     
-    # GET request - show current settings
-    settings = get_email_settings()
-    return render_template("admin_email_settings.html", settings=settings)
+    # Get all verified subscribers
+    subscribers = conn.execute("""
+        SELECT * FROM subscribers WHERE verified = 1
+    """).fetchall()
+    
+    sent_count = 0
+    for sub in subscribers:
+        # Get matching jobs based on frequency
+        if sub['frequency'] == 'daily':
+            # Get jobs from last 24 hours
+            jobs = conn.execute("""
+                SELECT * FROM jobs
+                WHERE field LIKE ? 
+                AND location LIKE ?
+                AND datetime(created_date) > datetime('now', '-1 day')
+                ORDER BY id DESC LIMIT 10
+            """, (f"%{sub['field']}%", f"%{sub['location']}%")).fetchall()
+        elif sub['frequency'] == 'weekly':
+            # Get jobs from last 7 days
+            jobs = conn.execute("""
+                SELECT * FROM jobs
+                WHERE field LIKE ? 
+                AND location LIKE ?
+                AND datetime(created_date) > datetime('now', '-7 days')
+                ORDER BY id DESC LIMIT 20
+            """, (f"%{sub['field']}%", f"%{sub['location']}%")).fetchall()
+        else:
+            # Instant or default - get recent jobs
+            jobs = conn.execute("""
+                SELECT * FROM jobs
+                WHERE field LIKE ? 
+                AND location LIKE ?
+                ORDER BY id DESC LIMIT 5
+            """, (f"%{sub['field']}%", f"%{sub['location']}%")).fetchall()
+        
+        if jobs and len(jobs) > 0:
+            if send_job_alert_email(sub['email'], jobs):
+                sent_count += 1
+                # Update last sent
+                conn.execute("""
+                    UPDATE subscribers SET last_sent = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (sub['id'],))
+    
+    conn.commit()
+    conn.close()
+    return sent_count
 
-# ==========================
-# TEST EMAIL (Admin only)
-# ==========================
-@app.route("/admin/test_email")
+@app.route("/send_alerts")
 @admin_required
-def admin_test_email():
-    settings = get_email_settings()
-    if not settings or not settings['smtp_username'] or not settings['smtp_password']:
-        flash('Please configure email settings first', 'error')
-        return redirect(url_for('admin_email_settings'))
-    
-    test_token = secrets.token_urlsafe(16)
-    test_email = settings['smtp_username']
-    
-    if send_verification_email(test_email, test_token, "Admin"):
-        flash(f'Test email sent successfully to {test_email}! Check your inbox.', 'success')
-    else:
-        flash('Failed to send test email. Check your email configuration.', 'error')
-    
+def send_alerts():
+    """Admin route to manually trigger job alerts"""
+    sent_count = send_job_alerts_to_all()
+    flash(f'Job alerts sent to {sent_count} subscribers!', 'success')
     return redirect(url_for('dashboard'))
 
 # ==========================
@@ -1320,10 +1276,6 @@ def dashboard():
     except:
         pass
     
-    # Get email settings status
-    email_settings = get_email_settings()
-    email_configured = bool(email_settings and email_settings['smtp_username'] and email_settings['smtp_password'])
-    
     # Get statistics
     stats = {
         'total_jobs': conn.execute("SELECT COUNT(*) as count FROM jobs").fetchone()['count'],
@@ -1333,7 +1285,6 @@ def dashboard():
         'verified_users': verified_users,
         'total_subscribers': subscribers_count,
         'verified_subscribers': verified_subscribers,
-        'email_configured': email_configured,
         'recent_applications': []
     }
     
@@ -1548,10 +1499,6 @@ def bulk_delete():
 @app.route("/export_jobs")
 @admin_required
 def export_jobs():
-    import csv
-    from io import StringIO
-    from flask import Response
-    
     features = get_available_features()
     conn = get_db()
     jobs = conn.execute("SELECT * FROM jobs").fetchall()
@@ -1622,6 +1569,26 @@ def admin_login():
     return render_template("admin_login.html")
 
 # ==========================
+# TEST EMAIL CONFIGURATION
+# ==========================
+@app.route("/test_email")
+@admin_required
+def test_email():
+    """Test email configuration"""
+    try:
+        msg = Message(
+            subject="Test Email from GraduateINN",
+            recipients=[app.config['MAIL_USERNAME']],
+            body="This is a test email to verify that Flask-Mail is configured correctly."
+        )
+        mail.send(msg)
+        flash('Test email sent successfully!', 'success')
+    except Exception as e:
+        flash(f'Error sending test email: {str(e)}', 'error')
+    
+    return redirect(url_for('dashboard'))
+
+# ==========================
 # API ENDPOINTS
 # ==========================
 
@@ -1661,6 +1628,54 @@ def api_job(id):
         return jsonify(dict(job))
     return jsonify({"error": "Job not found"}), 404
 
+@app.route("/api/subscribe", methods=["POST"])
+def api_subscribe():
+    """API endpoint for job alert subscription"""
+    data = request.get_json()
+    
+    email = data.get('email')
+    field = data.get('field', '')
+    location = data.get('location', '')
+    frequency = data.get('frequency', 'daily')
+    
+    if not email or not validate_email(email):
+        return jsonify({"success": False, "message": "Invalid email address"}), 400
+    
+    conn = get_db()
+    
+    try:
+        user_id = session.get('user_id')
+        verification_token = secrets.token_urlsafe(32)
+        
+        existing = conn.execute("SELECT * FROM subscribers WHERE email = ?", (email,)).fetchone()
+        
+        if existing:
+            if existing['verified'] == 1:
+                return jsonify({"success": False, "message": "Email already subscribed"}), 400
+            else:
+                conn.execute("""
+                UPDATE subscribers 
+                SET field = ?, location = ?, frequency = ?, verification_token = ?
+                WHERE email = ?
+                """, (field, location, frequency, verification_token, email))
+                conn.commit()
+        else:
+            conn.execute("""
+            INSERT INTO subscribers (email, user_id, field, location, frequency, verification_token)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (email, user_id, field, location, frequency, verification_token))
+            conn.commit()
+        
+        # Send verification email
+        send_verification_email(email, verification_token, "Subscriber")
+        
+        return jsonify({"success": True, "message": "Verification email sent"})
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        conn.close()
+
 # ==========================
 # ERROR HANDLERS
 # ==========================
@@ -1672,39 +1687,6 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html"), 500
-
-
-def send_job_alerts_to_all():
-    conn = get_db()
-
-    # Get all verified subscribers
-    subscribers = conn.execute("""
-        SELECT * FROM subscribers WHERE verified = 1
-    """).fetchall()
-
-    for sub in subscribers:
-        # Get matching jobs
-        jobs = conn.execute("""
-            SELECT * FROM jobs
-            WHERE field LIKE ? AND location LIKE ?
-            ORDER BY id DESC LIMIT 5
-        """, (f"%{sub['field']}%", f"%{sub['location']}%")).fetchall()
-
-        if jobs:
-            send_job_alert_email(sub['email'], jobs)
-
-            # Update last sent
-            conn.execute("""
-                UPDATE subscribers SET last_sent = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (sub['id'],))
-    
-    conn.commit()
-    conn.close()
-@app.route("/send_alerts")
-def send_alerts():
-    send_job_alerts_to_all()
-    return "Alerts sent!"
 
 # ==========================
 # RUN APP
