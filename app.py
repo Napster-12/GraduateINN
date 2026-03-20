@@ -1142,21 +1142,22 @@ def job_alerts():
 # ==========================
 @app.route("/verify_subscription/<token>")
 def verify_subscription(token):
+    """Verify subscriber email without requiring login"""
     conn = get_db()
-    
-    # Find subscriber with this token
-    subscriber = conn.execute("SELECT * FROM subscribers WHERE verification_token = ?", (token,)).fetchone()
-    
+    subscriber = conn.execute(
+        "SELECT * FROM subscribers WHERE verification_token = ?", (token,)
+    ).fetchone()
     if subscriber:
-        # Verify the subscriber
-        conn.execute("UPDATE subscribers SET verified = 1, verification_token = NULL WHERE id = ?", (subscriber['id'],))
+        conn.execute(
+            "UPDATE subscribers SET verified = 1, verification_token = NULL WHERE id = ?",
+            (subscriber['id'],)
+        )
         conn.commit()
         conn.close()
         flash('Your email has been verified! You will now receive job alerts.', 'success')
     else:
         conn.close()
         flash('Invalid or expired verification link.', 'error')
-    
     return redirect(url_for('index'))
 
 # ==========================
