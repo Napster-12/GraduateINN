@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}Edit Job - {{ job.title }}{% endblock %}
+
 {% block content %}
 
 <div class="container mt-4">
@@ -14,126 +16,143 @@
 
 <form method="post">
 
-<!-- JOB INFORMATION -->
-<h5 class="mb-3">Job Information</h5>
+<!-- Basic Information -->
+<h5 class="mb-3">Basic Information</h5>
+<div class="row g-3 mb-4">
 
-<div class="row">
+    <div class="col-md-6">
+        <label class="form-label">Job Title <span class="text-danger">*</span></label>
+        <input name="title" class="form-control" required
+               value="{{ job.title }}">
+    </div>
 
-<div class="col-md-6 mb-3">
-<label class="form-label">Job Title</label>
-<input name="title" class="form-control"
-value="{{ job.title }}">
-</div>
+    <div class="col-md-6">
+        <label class="form-label">Company <span class="text-danger">*</span></label>
+        <input name="company" class="form-control" required
+               value="{{ job.company }}">
+    </div>
 
-<div class="col-md-6 mb-3">
-<label class="form-label">Company</label>
-<input name="company" class="form-control"
-value="{{ job.company }}">
-</div>
+    <div class="col-md-6">
+        <label class="form-label">Location <span class="text-danger">*</span></label>
+        <input name="location" class="form-control" required
+               value="{{ job.location }}">
+    </div>
 
-</div>
-
-
-<div class="row">
-
-<div class="col-md-6 mb-3">
-<label class="form-label">Location</label>
-<input name="location" class="form-control"
-value="{{ job.location }}">
-</div>
-
-<div class="col-md-6 mb-3">
-<label class="form-label">Field</label>
-<input name="field" class="form-control"
-value="{{ job.field }}">
-</div>
+    <div class="col-md-6">
+        <label class="form-label">Field/Industry <span class="text-danger">*</span></label>
+        <select name="field" class="form-select" required>
+            <option value="">Select Field</option>
+            {% for option in ['Engineering', 'Information Technology', 'Accounting', 'Finance', 'Marketing', 'Human Resources', 'Sales', 'Logistics', 'Healthcare', 'Education', 'Other'] %}
+                <option value="{{ option }}" {% if job.field == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
 </div>
 
+<!-- Job Details -->
+<h5 class="mb-3">Job Details</h5>
+<div class="row g-3 mb-4">
 
-<div class="mb-3">
-<label class="form-label">Qualification Required</label>
-<input name="qualification" class="form-control"
-value="{{ job.qualification }}">
+    <div class="col-md-4">
+        <label class="form-label">Job Type</label>
+        <select name="job_type" class="form-select">
+            {% for type in ['Full-time','Part-time','Internship','Contract','Temporary'] %}
+                <option value="{{ type }}" {% if job.job_type == type %}selected{% endif %}>{{ type }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label">Experience Level</label>
+        <select name="experience_level" class="form-select">
+            {% for level in ['Entry Level','Intermediate','Graduate','Intern'] %}
+                <option value="{{ level }}" {% if job.experience_level == level %}selected{% endif %}>{{ level }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label">Salary Range / Stipend</label>
+        <input name="salary_range" class="form-control"
+               value="{{ job.salary_range }}" placeholder="e.g., R25k - R35k">
+    </div>
+
 </div>
 
+<!-- Qualification -->
+<div class="mb-4">
+    <label class="form-label">Qualification Required <span class="text-danger">*</span></label>
+    <input name="qualification" class="form-control" required
+           value="{{ job.qualification }}">
+</div>
 
 <hr>
 
-
-<!-- DESCRIPTION -->
-
+<!-- Description -->
 <h5 class="mb-3">Job Description</h5>
-
-<div class="mb-3">
-<label class="form-label">Description</label>
-
-<textarea name="description" rows="4" class="form-control">
-{{ job.description }}
-</textarea>
-
+<div class="mb-4">
+    <label class="form-label">Description <span class="text-danger">*</span></label>
+    <textarea name="description" rows="6" class="form-control" required>{{ job.description }}</textarea>
+    <div class="form-text">Use bullet points for better readability</div>
 </div>
-
 
 <hr>
 
-
-<!-- REQUIREMENTS -->
-
+<!-- Requirements -->
 <h5 class="mb-3">Requirements</h5>
-
-<div class="mb-3">
-<label class="form-label">Minimum Requirements</label>
-
-<textarea name="requirements" rows="4" class="form-control">
-{{ job.requirements }}
-</textarea>
-
+<div class="mb-4">
+    <label class="form-label">Minimum Requirements <span class="text-danger">*</span></label>
+    <textarea name="requirements" rows="6" class="form-control" required>{{ job.requirements }}</textarea>
+    <div class="form-text">One requirement per line</div>
 </div>
-
 
 <hr>
 
+<!-- Application Details -->
+<h5 class="mb-3">Application Details</h5>
+<div class="row g-3 mb-4">
 
-<!-- APPLICATION -->
+    <div class="col-md-6">
+        <label class="form-label">Application Link</label>
+        <input name="application_link" class="form-control"
+               value="{{ job.application_link }}" placeholder="https://company.com/apply">
+        <div class="form-text">Leave empty if applying via email</div>
+    </div>
 
-<h5 class="mb-3">Application Information</h5>
+    <div class="col-md-6">
+        <label class="form-label">Closing Date <span class="text-danger">*</span></label>
+        <input type="date" name="closing_date" class="form-control"
+               value="{{ job.closing_date }}">
+    </div>
 
-<div class="mb-3">
-<label class="form-label">Application Link</label>
-
-<input name="application_link" class="form-control"
-value="{{ job.application_link }}">
 </div>
 
-
-<div class="mb-3">
-<label class="form-label">Closing Date</label>
-
-<input type="date" name="closing_date"
-class="form-control"
-value="{{ job.closing_date }}">
+<!-- Featured Option -->
+<div class="mb-4">
+    <div class="form-check">
+        <input type="checkbox" name="is_featured" class="form-check-input" id="isFeatured" {% if job.is_featured %}checked{% endif %}>
+        <label class="form-check-label" for="isFeatured">
+            <i class="bi bi-star-fill text-warning me-1"></i> Feature this job
+        </label>
+        <div class="form-text">Featured jobs appear in the homepage carousel</div>
+    </div>
 </div>
 
-
-<div class="d-flex justify-content-between mt-4">
-
-<a href="/dashboard" class="btn btn-outline-secondary">
-Cancel
-</a>
-
-<button class="btn btn-warning px-4">
-Update Opportunity
-</button>
-
+<!-- Form Actions -->
+<div class="d-flex justify-content-between">
+    <a href="/dashboard" class="btn btn-outline-secondary">
+        Cancel
+    </a>
+    <button class="btn btn-warning px-4">
+        Update Opportunity
+    </button>
 </div>
 
 </form>
 
 </div>
-
 </div>
-
 </div>
 
 {% endblock %}
