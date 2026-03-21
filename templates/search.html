@@ -127,9 +127,16 @@
                                         <i class="bi bi-mortarboard me-1"></i>{{ job.qualification }}
                                     </span>
                                     {% if features.salary_range and job.salary_range %}
-                                    <span class="badge bg-light text-dark me-2">
-                                        <i class="bi bi-currency-dollar me-1"></i>{{ job.salary_range }}
-                                    </span>
+                                   {% if job.salary_range %}
+                                <span class="badge bg-light text-dark me-2">
+                                <i class="bi bi-cash-coin me-1"></i>
+                                 R{{ job.salary_range.replace('-', ' - R') }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-light text-dark me-2">
+                                <i class="bi bi-cash-coin me-1"></i>Stipend: Market Related
+                                </span>
+                                {% endif %}
                                     {% endif %}
                                     {% if features.views and job.views %}
                                     <span class="badge bg-light text-dark">
