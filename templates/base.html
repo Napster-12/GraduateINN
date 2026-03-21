@@ -101,6 +101,113 @@
             min-height: 70vh;
         }
 
+        /* ================= LOGO ================= */
+
+.graduate-logo{
+    text-decoration:none;
+    gap:14px;
+}
+
+/* yellow square */
+
+.logo-icon{
+    width:60px;
+    height:60px;
+    background:#f3b458;
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+/* cap icon */
+
+.logo-icon i{
+    font-size:32px;
+    color:black;
+}
+
+/* text wrapper */
+
+.logo-text-wrapper{
+    line-height:1.05;
+}
+
+/* GRADUATE INN */
+
+.logo-main{
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:#e5e7eb;
+}
+
+.logo-main span{
+    color:#ff2d2d;
+}
+
+/* subtitle */
+
+.logo-sub{
+    font-size:11px;
+    letter-spacing:7px;
+    color:#94a3b8;
+    margin-top:2px;
+}
+/* ================= LOGO ================= */
+
+.graduate-logo{
+    text-decoration:none;
+    gap:14px;
+}
+
+/* yellow square */
+
+.logo-icon{
+    width:60px;
+    height:60px;
+    background:#f3b458;
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+/* cap icon */
+
+.logo-icon i{
+    font-size:32px;
+    color:black;
+}
+
+/* text wrapper */
+
+.logo-text-wrapper{
+    line-height:1.05;
+}
+
+/* GRADUATE INN */
+
+.logo-main{
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:#e5e7eb;
+}
+
+.logo-main span{
+    color:#ff2d2d;
+}
+
+/* subtitle */
+
+.logo-sub{
+    font-size:11px;
+    letter-spacing:7px;
+    color:#94a3b8;
+    margin-top:2px;
+}
+
         /* FOOTER */
         .footer {
             background: white;
@@ -149,9 +256,23 @@
 <nav class="navbar navbar-expand-lg fixed-top">
     <div class="container">
 
-        <a class="navbar-brand" href="/">
-            <img src="{{ url_for('static', filename='images/logo.png') }}">
-        </a>
+        <a class="navbar-brand graduate-logo d-flex align-items-center" href="/">
+
+    <div class="logo-icon">
+        <i class="bi bi-mortarboard-fill"></i>
+    </div>
+
+    <div class="logo-text-wrapper">
+        <div class="logo-main">
+            GRADUATE <span>INN</span>
+        </div>
+
+        <div class="logo-sub">
+            APPLICATION PLATFORM
+        </div>
+    </div>
+
+</a>
 
         <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
             <span class="navbar-toggler-icon"></span>
