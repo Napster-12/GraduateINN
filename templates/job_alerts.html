@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Job Alerts - GraduateINN{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <i class="bi bi-bell-fill display-4 mb-3"></i>
+                    <h3 class="mb-0">Job Alerts</h3>
+                    <p class="text-white-50 mb-0">Get notified about matching opportunities</p>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Flash messages for job alerts -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" action="{{ url_for('job_alerts') }}" id="alertForm">
+                        <div class="mb-4">
+                            <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control form-control-lg" id="email" name="email" 
+                                   placeholder="you@example.com" required value="{{ request.form.email }}">
+                            <div class="form-text">We'll send job alerts to this email</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="field" class="form-label">Fields of Interest</label>
+                                <select class="form-select" id="field" name="field">
+                                    <option value="">All Fields</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="Information Technology">Information Technology</option>
+                                    <option value="Accounting">Accounting</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Human Resources">Human Resources</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Logistics">Logistics</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Education">Education</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <label for="location" class="form-label">Preferred Location</label>
+                                <input type="text" class="form-control" id="location" name="location" 
+                                       placeholder="e.g., Johannesburg, Cape Town" value="{{ request.form.location }}">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="frequency" class="form-label">Alert Frequency</label>
+                            <select class="form-select" id="frequency" name="frequency">
+                                <option value="daily">Daily (once per day)</option>
+                                <option value="weekly">Weekly (every Monday)</option>
+                                <option value="instant">Instant (as jobs are posted)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-check mb-4">
+                            <input type="checkbox" class="form-check-input" id="terms" required>
+                            <label class="form-check-label" for="terms">
+                                I agree to receive job alerts via email. You can unsubscribe at any time.
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="bi bi-bell me-2"></i>Subscribe to Alerts
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer bg-light text-center py-3">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <i class="bi bi-shield-check text-success me-2"></i>
+                        <span class="text-muted small">We respect your privacy. Unsubscribe anytime.</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Benefits -->
+            <div class="row g-4 mt-5">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="benefit-icon mb-3">
+                            <i class="bi bi-clock-history display-4 text-primary"></i>
+                        </div>
+                        <h5>Save Time</h5>
+                        <p class="text-muted">No need to search daily - we'll send matching jobs to your inbox</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="benefit-icon mb-3">
+                            <i class="bi bi-filter-circle display-4 text-success"></i>
+                        </div>
+                        <h5>Filtered Results</h5>
+                        <p class="text-muted">Only receive opportunities that match your preferences</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="benefit-icon mb-3">
+                            <i class="bi bi-bell display-4 text-warning"></i>
+                        </div>
+                        <h5>Instant Alerts</h5>
+                        <p class="text-muted">Be the first to apply with instant notifications</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- How it works -->
+            <div class="card border-0 bg-light mt-5">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">How it works:</h5>
+                    <ol class="mb-0">
+                        <li class="mb-2">Enter your email and preferences</li>
+                        <li class="mb-2">Check your inbox for a verification email</li>
+                        <li class="mb-2">Click the verification link to confirm</li>
+                        <li>Start receiving job alerts based on your preferences</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .benefit-icon {
+        width: 80px;
+        height: 80px;
+        line-height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        margin: 0 auto;
+        transition: all 0.3s ease;
+    }
+    
+    .benefit-icon:hover {
+        transform: scale(1.1);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+    }
+    
+    .bg-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    .alert {
+        border-radius: 10px;
+        border: none;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-success {
+        background: linear-gradient(135deg, #84fab0, #8fd3f4);
+        color: #1e293b;
+    }
+    
+    .alert-error {
+        background: linear-gradient(135deg, #ff6b6b, #ee5253);
+        color: white;
+    }
+    
+    .alert-info {
+        background: linear-gradient(135deg, #a1c4fd, #c2e9fb);
+        color: #1e293b;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        color: white;
+    }
+</style>
+
+<script>
+    document.getElementById('alertForm').addEventListener('submit', function(e) {
+        const email = document.getElementById('email').value;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!emailRegex.test(email)) {
+            e.preventDefault();
+            alert('Please enter a valid email address');
+            return;
+        }
+        
+        const btn = document.getElementById('submitBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
+        btn.disabled = true;
+    });
+</script>
+{% endblock %}
