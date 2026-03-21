@@ -15,7 +15,7 @@
     <style>
         :root {
             --primary: #2563eb;
-            --dark: #0f172a;
+            --dark: #000;
             --text: #334155;
             --light: #f1f5f9;
             --border: #e2e8f0;
@@ -28,24 +28,42 @@
             padding-top: 80px;
         }
 
-        /* NAVBAR */
+        /* ================= NAVBAR ================= */
         .navbar {
-            background: white;
-            border-bottom: 1px solid var(--border);
+            background: #000;
+            border-bottom: 1px solid #111;
             padding: 0.8rem 0;
-        }
-
-        .navbar-brand img {
-            height: 50px;
         }
 
         .nav-link {
             font-weight: 500;
-            color: var(--text) !important;
+            color: #e5e7eb !important;
         }
 
         .nav-link:hover {
-            color: var(--primary) !important;
+            color: #f3b458 !important;
+        }
+
+        .navbar-toggler {
+            border: none;
+        }
+
+        .navbar-toggler-icon {
+            filter: invert(1);
+        }
+
+        .dropdown-menu {
+            background: #111;
+            border: 1px solid #222;
+        }
+
+        .dropdown-item {
+            color: #e5e7eb;
+        }
+
+        .dropdown-item:hover {
+            background: #1f2937;
+            color: #f3b458;
         }
 
         /* SEARCH BAR */
@@ -56,9 +74,9 @@
 
         .search-box {
             display: flex;
-            background: white;
+            background: #111;
             border-radius: 50px;
-            border: 1px solid var(--border);
+            border: 1px solid #222;
             overflow: hidden;
         }
 
@@ -66,6 +84,12 @@
             border: none;
             padding: 0.75rem 1rem;
             flex: 1;
+            background: transparent;
+            color: #e5e7eb;
+        }
+
+        .search-box input::placeholder {
+            color: #9ca3af;
         }
 
         .search-box input:focus {
@@ -73,8 +97,8 @@
         }
 
         .search-box button {
-            background: var(--primary);
-            color: white;
+            background: #f3b458;
+            color: black;
             border: none;
             padding: 0 20px;
         }
@@ -96,117 +120,41 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
 
-        /* CONTENT */
         .main-content {
             min-height: 70vh;
         }
 
         /* ================= LOGO ================= */
+        .graduate-logo {
+            text-decoration: none;
+            gap: 14px;
+        }
 
-.graduate-logo{
-    text-decoration:none;
-    gap:14px;
-}
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: #f3b458;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-/* yellow square */
+        .logo-icon i {
+            font-size: 32px;
+            color: black;
+        }
 
-.logo-icon{
-    width:60px;
-    height:60px;
-    background:#f3b458;
-    border-radius:16px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
+        .logo-main {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #e5e7eb;
+        }
 
-/* cap icon */
-
-.logo-icon i{
-    font-size:32px;
-    color:black;
-}
-
-/* text wrapper */
-
-.logo-text-wrapper{
-    line-height:1.05;
-}
-
-/* GRADUATE INN */
-
-.logo-main{
-    font-size:26px;
-    font-weight:800;
-    letter-spacing:1px;
-    color:#e5e7eb;
-}
-
-.logo-main span{
-    color:#ff2d2d;
-}
-
-/* subtitle */
-
-.logo-sub{
-    font-size:11px;
-    letter-spacing:7px;
-    color:#94a3b8;
-    margin-top:2px;
-}
-/* ================= LOGO ================= */
-
-.graduate-logo{
-    text-decoration:none;
-    gap:14px;
-}
-
-/* yellow square */
-
-.logo-icon{
-    width:60px;
-    height:60px;
-    background:#f3b458;
-    border-radius:16px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-/* cap icon */
-
-.logo-icon i{
-    font-size:32px;
-    color:black;
-}
-
-/* text wrapper */
-
-.logo-text-wrapper{
-    line-height:1.05;
-}
-
-/* GRADUATE INN */
-
-.logo-main{
-    font-size:26px;
-    font-weight:800;
-    letter-spacing:1px;
-    color:#e5e7eb;
-}
-
-.logo-main span{
-    color:#ff2d2d;
-}
-
-/* subtitle */
-
-.logo-sub{
-    font-size:11px;
-    letter-spacing:7px;
-    color:#94a3b8;
-    margin-top:2px;
-}
+        .logo-main span {
+            color: #ff2d2d;
+        }
 
         /* FOOTER */
         .footer {
@@ -216,20 +164,6 @@
             margin-top: 60px;
         }
 
-        .footer h6 {
-            font-weight: 600;
-        }
-
-        .footer a {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            color: var(--primary);
-        }
-
-        /* BADGE */
         .badge-circle {
             position: absolute;
             top: -5px;
@@ -241,7 +175,6 @@
             padding: 3px 6px;
         }
 
-        /* MOBILE */
         @media (max-width: 768px) {
             .search-wrapper {
                 margin-top: 10px;
@@ -257,20 +190,14 @@
     <div class="container">
 
         <a class="navbar-brand graduate-logo d-flex align-items-center" href="/">
+            <div class="logo-icon">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
 
-    <div class="logo-icon">
-        <i class="bi bi-mortarboard-fill"></i>
-    </div>
-
-    <div class="logo-text-wrapper">
-        <div class="logo-main">
-            GRADUATE <span>INN</span>
-        </div>
-
-
-    </div>
-
-</a>
+            <div class="logo-main">
+                GRADUATE <span>INN</span>
+            </div>
+        </a>
 
         <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
             <span class="navbar-toggler-icon"></span>
@@ -345,9 +272,6 @@
 <!-- FOOTER -->
 <footer class="footer">
     <div class="container">
-        
-
-           
         <div class="text-center mt-3">
             <small>© 2026 GraduateINN</small>
         </div>
